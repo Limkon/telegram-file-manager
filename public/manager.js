@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMultiSelectMode = false;
     let currentFolderId = 1;
     let selectedItems = new Map();
-    let currentFolderContents = { folders: [], files: [] };
+    let currentFolderContents = { folders: [], files: [] }; // 儲存從後端獲取的原始數據
     let moveTargetFolderId = null;
     let isSearchMode = false;
     const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024;
@@ -91,10 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
             itemGrid.innerHTML = '<p>正在加載...</p>';
             currentFolderId = folderId;
             const res = await axios.get(`/api/folder/${folderId}`);
-            currentFolderContents = res.data.contents;
+            currentFolderContents = res.data.contents; // 儲存原始數據
             selectedItems.clear();
             renderBreadcrumb(res.data.path);
-            filterAndRender();
+            filterAndRender(); // 使用篩選渲染函式
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
@@ -109,15 +109,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFolderContents = res.data.contents;
             selectedItems.clear();
             renderBreadcrumb(res.data.path);
-            filterAndRender();
+            filterAndRender(); // 使用篩選渲染函式
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>搜尋失敗。</p>';
         }
     };
 
+    // --- *** 關鍵修正 1：新增篩選並渲染的函式 *** ---
     const filterAndRender = () => {
         const activeCategory = categories.querySelector('.active').dataset.category;
+        
+        // 在搜尋模式下，分類篩選器不應作用於資料夾
         const foldersToRender = isSearchMode ? [] : currentFolderContents.folders;
         
         let filesToRender = currentFolderContents.files;
@@ -285,12 +288,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     
+    // --- *** 關鍵修正 2：為分類按鈕新增事件監聽器 *** ---
     if (categories) {
         categories.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
                 categories.querySelector('.active').classList.remove('active');
                 e.target.classList.add('active');
-                filterAndRender();
+                filterAndRender(); // 點擊後立即重新篩選並渲染
             }
         });
     }
