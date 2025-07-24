@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- *** 關鍵修正 2：在提交時預先檢查檔案大小 *** ---
             for (const file of fileInput.files) {
                 if (file.size > MAX_SERVER_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過伺服器 1 GB 的限制。`, 'error');
+                    showNotification(`檔案 "${file.name}" 過大，超過伺服器 50 MB 的限制。`, 'error');
                     return; // 拒絕上傳
                 }
                 if (file.size > MAX_TELEGRAM_SIZE) {
