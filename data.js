@@ -1,6 +1,8 @@
 const db = require('./database.js');
 const crypto = require('crypto');
+const path = require('path'); // --- *** 關鍵修正 1：引入 Node.js 的 path 模組 *** ---
 
+// --- 搜尋檔案 ---
 function searchFiles(query) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
@@ -15,10 +17,10 @@ function searchFiles(query) {
     });
 }
 
+// --- 資料夾操作 ---
 function getFolderContents(folderId = 1) {
     return new Promise((resolve, reject) => {
         const sqlFolders = `SELECT id, name, parent_id, 'folder' as type FROM folders WHERE parent_id = ? ORDER BY name ASC`;
-        // --- *** 關鍵修正 1：在 SQL 查詢中加入 thumb_file_id *** ---
         const sqlFiles = `SELECT *, message_id as id, fileName as name, 'file' as type FROM files WHERE folder_id = ? ORDER BY name ASC`;
         let contents = { folders: [], files: [] };
         db.all(sqlFolders, [folderId], (err, folders) => {
@@ -33,18 +35,19 @@ function getFolderContents(folderId = 1) {
     });
 }
 
-// --- *** 新增：遞歸獲取資料夾內所有檔案的函式 *** ---
 async function getFilesRecursive(folderId, currentPath = '') {
     let allFiles = [];
     const sqlFiles = "SELECT * FROM files WHERE folder_id = ?";
     const files = await new Promise((res, rej) => db.all(sqlFiles, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const file of files) {
+        // --- *** 關鍵修正 2：使用正確的 path.join *** ---
         allFiles.push({ ...file, path: path.join(currentPath, file.fileName) });
     }
 
     const sqlFolders = "SELECT id, name FROM folders WHERE parent_id = ?";
     const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const subFolder of subFolders) {
+        // --- *** 關鍵修正 3：使用正確的 path.join *** ---
         const nestedFiles = await getFilesRecursive(subFolder.id, path.join(currentPath, subFolder.name));
         allFiles.push(...nestedFiles);
     }
