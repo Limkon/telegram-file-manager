@@ -1,19 +1,13 @@
 const db = require('./database.js');
 const crypto = require('crypto');
 
-// --- 資料庫操作函數 ---
-
 function addFile({ message_id, fileName, mimetype, file_id, thumb_file_id, date }) {
     const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date)
                  VALUES (?, ?, ?, ?, ?, ?)`;
     return new Promise((resolve, reject) => {
         db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date], function(err) {
-            if (err) {
-                console.error('資料庫寫入失敗:', err.message);
-                reject(err);
-            } else {
-                resolve({ success: true, id: this.lastID });
-            }
+            if (err) reject(err);
+            else resolve({ success: true, id: this.lastID });
         });
     });
 }
@@ -27,16 +21,24 @@ function getAllFiles() {
     });
 }
 
+function getFilesByIds(messageIds) {
+    const placeholders = messageIds.map(() => '?').join(',');
+    const sql = `SELECT * FROM files WHERE message_id IN (${placeholders})`;
+    return new Promise((resolve, reject) => {
+        db.all(sql, messageIds, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
 function getFileByShareToken(token) {
      return new Promise((resolve, reject) => {
         const sql = "SELECT * FROM files WHERE share_token = ?";
         db.get(sql, [token], (err, row) => {
             if (err) return reject(err);
             if (!row) return resolve(null);
-
-            // 检查是否过期
             if (row.share_expires_at && Date.now() > row.share_expires_at) {
-                // 清理掉过期的 token
                 const updateSql = "UPDATE files SET share_token = NULL, share_expires_at = NULL WHERE message_id = ?";
                 db.run(updateSql, [row.message_id]);
                 resolve(null);
@@ -51,13 +53,9 @@ function renameFile(messageId, newFileName) {
     const sql = `UPDATE files SET fileName = ? WHERE message_id = ?`;
     return new Promise((resolve, reject) => {
         db.run(sql, [newFileName, messageId], function(err) {
-            if (err) {
-                reject(err);
-            } else if (this.changes === 0) {
-                resolve({ success: false, message: '文件未找到。' });
-            } else {
-                resolve({ success: true });
-            }
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '文件未找到。' });
+            else resolve({ success: true });
         });
     });
 }
@@ -67,7 +65,7 @@ function createShareLink(messageId, expiresIn) {
     let expiresAt = null;
     const now = Date.now();
     const hours = (h) => h * 60 * 60 * 1000;
-    const days = (d) => d * 24 * 60 * 60 * 1000;
+    const days = (d) => d * 24 * hours(1);
 
     switch (expiresIn) {
         case '1h': expiresAt = now + hours(1); break;
@@ -83,22 +81,16 @@ function createShareLink(messageId, expiresIn) {
     const sql = `UPDATE files SET share_token = ?, share_expires_at = ? WHERE message_id = ?`;
     return new Promise((resolve, reject) => {
         db.run(sql, [token, expiresAt, messageId], function(err) {
-            if (err) {
-                reject(err);
-            } else if (this.changes === 0) {
-                 resolve({ success: false, message: '文件未找到。' });
-            } else {
-                resolve({ success: true, token });
-            }
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '文件未找到。' });
+            else resolve({ success: true, token });
         });
     });
 }
 
 function deleteFilesByIds(messageIds) {
-    // 使用 IN 子句和參數化查詢來一次刪除多個文件
     const placeholders = messageIds.map(() => '?').join(',');
     const sql = `DELETE FROM files WHERE message_id IN (${placeholders})`;
-    
     return new Promise((resolve, reject) => {
         db.run(sql, messageIds, function(err) {
             if (err) reject(err);
@@ -107,25 +99,4 @@ function deleteFilesByIds(messageIds) {
     });
 }
 
-function getFilesByIds(messageIds) {
-    const placeholders = messageIds.map(() => '?').join(',');
-    const sql = `SELECT * FROM files WHERE message_id IN (${placeholders})`;
-
-    return new Promise((resolve, reject) => {
-        db.all(sql, messageIds, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-}
-
-
-module.exports = {
-    addFile,
-    getAllFiles,
-    getFileByShareToken,
-    renameFile,
-    createShareLink,
-    deleteFilesByIds,
-    getFilesByIds
-};
+module.exports = { addFile, getAllFiles, getFilesByIds, getFileByShareToken, renameFile, createShareLink, deleteFilesByIds };
