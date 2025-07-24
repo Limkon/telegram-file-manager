@@ -1,8 +1,9 @@
+// limkon/telegram-file-manager/telegram-file-manager-df63cbcbc7a99b98d3f81cc263302592a9f7d5ed/public/manager.js
 document.addEventListener('DOMContentLoaded', () => {
     const fileGrid = document.getElementById('fileGrid');
     const searchInput = document.getElementById('searchInput');
     const categoriesContainer = document.getElementById('categories');
-    const modal = document.getElementById('previewModal');
+    const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
     const actionBar = document.getElementById('actionBar');
@@ -12,6 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
+    
+    // --- 新增分享相关元素 ---
+    const shareBtn = document.getElementById('shareBtn');
+    const shareModal = document.getElementById('shareModal');
+    const shareModalTitle = document.getElementById('shareModalTitle');
+    const shareOptions = document.getElementById('shareOptions');
+    const shareResult = document.getElementById('shareResult');
+    const expiresInSelect = document.getElementById('expiresInSelect');
+    const confirmShareBtn = document.getElementById('confirmShareBtn');
+    const cancelShareBtn = document.getElementById('cancelShareBtn');
+    const shareLinkContainer = document.getElementById('shareLinkContainer');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const closeShareModalBtn = document.getElementById('closeShareModalBtn');
+
 
     let allFiles = [];
     let selectedFiles = new Set();
@@ -53,6 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const canPreview = count === 1 && ['image', 'video', 'audio', 'document'].includes(getFileCategory(allFiles.find(f => f.message_id === selectedFiles.values().next().value)?.mimetype));
         if(previewBtn) previewBtn.disabled = !canPreview;
         if(renameBtn) renameBtn.disabled = count !== 1;
+        // --- 控制分享按钮状态 ---
+        if(shareBtn) shareBtn.disabled = count !== 1;
         if(downloadBtn) downloadBtn.disabled = count === 0;
         if(deleteBtn) deleteBtn.disabled = count === 0;
 
@@ -168,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // *** 關鍵修正：為按鈕添加保護性檢查 ***
     if(previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
@@ -177,15 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = allFiles.find(f => f.message_id === messageId);
             if (!file) return;
 
+            previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
-            modal.style.display = 'flex';
-
+            
             const category = getFileCategory(file.mimetype);
 
             try {
-                // 對於媒體文件，我們現在也使用代理來避免跨域問題
                 if (category === 'image' || category === 'video' || category === 'audio') {
-                    const url = `/download/proxy/${messageId}`; // 使用下載代理路由
+                    const url = `/download/proxy/${messageId}`;
                     if (category === 'image') {
                         modalContent.innerHTML = `<img src="${url}" alt="預覽">`;
                     } else if (category === 'video') {
@@ -259,9 +274,75 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if(closeModal) {
         closeModal.onclick = () => {
-            modal.style.display = 'none';
+            previewModal.style.display = 'none';
             modalContent.innerHTML = '';
         };
+    }
+    
+    // --- 新增分享模态框逻辑 ---
+    
+    function showShareModal() {
+        shareOptions.style.display = 'block';
+        shareResult.style.display = 'none';
+        shareLinkContainer.textContent = '';
+        confirmShareBtn.disabled = false;
+        confirmShareBtn.textContent = '生成分享鏈接';
+        
+        const messageId = selectedFiles.values().next().value;
+        const file = allFiles.find(f => f.message_id === messageId);
+        shareModalTitle.textContent = `分享文件: ${file.fileName}`;
+        
+        shareModal.style.display = 'flex';
+    }
+
+    function hideShareModal() {
+        shareModal.style.display = 'none';
+    }
+
+    if (shareBtn) {
+        shareBtn.addEventListener('click', () => {
+            if (shareBtn.disabled) return;
+            showShareModal();
+        });
+    }
+
+    if (cancelShareBtn) cancelShareBtn.addEventListener('click', hideShareModal);
+    if (closeShareModalBtn) closeShareModalBtn.addEventListener('click', hideShareModal);
+
+    if (confirmShareBtn) {
+        confirmShareBtn.addEventListener('click', async () => {
+            confirmShareBtn.disabled = true;
+            confirmShareBtn.textContent = '正在生成...';
+
+            const messageId = selectedFiles.values().next().value;
+            const expiresIn = expiresInSelect.value;
+            
+            try {
+                const res = await axios.post('/share', { messageId, expiresIn });
+                if (res.data.success) {
+                    shareLinkContainer.textContent = res.data.url;
+                    shareOptions.style.display = 'none';
+                    shareResult.style.display = 'block';
+                } else {
+                    alert('創建分享鏈接失敗: ' + res.data.message);
+                    hideShareModal();
+                }
+            } catch (error) {
+                alert('創建分享鏈接請求失敗');
+                hideShareModal();
+            }
+        });
+    }
+    
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shareLinkContainer.textContent).then(() => {
+                copyLinkBtn.textContent = '已複製!';
+                setTimeout(() => { copyLinkBtn.textContent = '複製鏈接'; }, 2000);
+            }, () => {
+                alert('複製失敗');
+            });
+        });
     }
 
     loadFiles();
