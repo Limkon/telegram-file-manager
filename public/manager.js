@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileInput');
     const fileListContainer = document.getElementById('file-selection-list');
     const folderSelect = document.getElementById('folderSelect');
+    const uploadNotificationArea = document.getElementById('uploadNotificationArea'); // 新增
 
     // 狀態
     let isMultiSelectMode = false;
@@ -39,9 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFolderContents = { folders: [], files: [] };
     let moveTargetFolderId = null;
     let isSearchMode = false;
-
-    // --- 上傳邏輯相關常數 ---
-    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB
+    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024;
     let foldersLoaded = false;
 
     // --- 輔助函式 ---
@@ -54,7 +53,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     };
     
-    // ... (所有核心功能函式) ...
+    // --- *** 關鍵修正 1：更新通知函式 *** ---
+    function showNotification(message, type = 'info', container = null) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+
+        if (container) {
+            // 局部通知
+            notification.classList.add('local');
+            container.innerHTML = ''; // 清空之前的通知
+            container.appendChild(notification);
+        } else {
+            // 全域通知
+            notification.classList.add('global');
+            const existingNotif = document.querySelector('.notification.global');
+            if (existingNotif) existingNotif.remove();
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentElement) notification.parentElement.removeChild(notification);
+            }, 5000);
+        }
+    }
+
     const loadFolderContents = async (folderId) => {
         try {
             isSearchMode = false;
@@ -184,19 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('加載資料夾列表失敗', error);
         }
     };
-    function showNotification(message, type = 'info') {
-        const existingNotif = document.querySelector('.notification');
-        if (existingNotif) { existingNotif.remove(); }
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            if (notification.parentElement) {
-              notification.parentElement.removeChild(notification);
-            }
-        }, 5000);
-    }
 
     // --- 事件監聽 ---
     if (uploadForm) {
@@ -213,16 +221,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         uploadForm.onsubmit = async function (e) {
             e.preventDefault();
-            if (fileInput.files.length === 0) { showNotification('請選擇文件', 'error'); return; }
+            if (fileInput.files.length === 0) { 
+                showNotification('請選擇文件', 'error', uploadNotificationArea); 
+                return; 
+            }
             
-            // --- *** 關鍵修正：使用動態參數的檔案大小檢查 *** ---
             for (const file of fileInput.files) {
                 if (file.size > MAX_TELEGRAM_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過 Telegram ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error');
+                    // --- *** 關鍵修正 2：將通知顯示在彈窗內 *** ---
+                    showNotification(`檔案 "${file.name}" 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadNotificationArea);
                     return;
                 }
             }
             
+            uploadNotificationArea.innerHTML = ''; // 清空舊通知
             const formData = new FormData(uploadForm);
             const submitButton = e.target.querySelector('button[type="submit"]');
             const progressArea = document.getElementById('progressArea');
@@ -245,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     uploadModal.style.display = 'none';
                     loadFolderContents(currentFolderId);
                 } else {
-                    showNotification('上傳失敗', 'error');
+                    showNotification('上傳失敗', 'error', uploadNotificationArea);
                 }
             } catch (error) {
-                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
+                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = '上傳';
@@ -357,6 +369,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showUploadModalBtn.addEventListener('click', async () => {
             await loadFoldersForUpload();
             folderSelect.value = currentFolderId;
+            uploadNotificationArea.innerHTML = ''; // 清空舊通知
+            uploadForm.reset();
+            fileListContainer.innerHTML = '';
             uploadModal.style.display = 'flex';
         });
     }
