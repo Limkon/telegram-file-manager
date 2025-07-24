@@ -50,35 +50,65 @@ app.post('/login', (req, res) => {
     res.status(401).send('Invalid credentials');
   }
 });
-app.get('/', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
-app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
-app.get('/shares-page', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/shares.html'));
+
+// 主頁面現在會重新導向到根目錄
+app.get('/', requireLogin, (req, res) => {
+    res.redirect('/folder/1'); // 預設進入 ID 為 1 的根目錄
 });
+// 讓前端可以直接透過 URL 訪問指定資料夾
+app.get('/folder/:id', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/manager.html'));
+});
+
+app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
+app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
 // --- API 接口 ---
+
+// 更新上傳 API 以處理 folderId
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, message: '沒有選擇文件' });
     }
+    // 從表單中獲取 folderId，如果沒有則預設為 1 (根目錄)
+    const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
     const results = [];
     for (const file of req.files) {
-        const result = await sendFile(file.buffer, file.originalname, file.mimetype, req.body.caption || '');
+        const result = await sendFile(file.buffer, file.originalname, file.mimetype, req.body.caption || '', folderId);
         results.push(result);
     }
     res.json({ success: true, results });
 });
 
-app.get('/files', requireLogin, async (req, res) => {
+// 新增：獲取指定資料夾內容的 API
+app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
-        const files = await data.getAllFiles();
-        res.json(files);
+        const folderId = parseInt(req.params.id, 10);
+        const contents = await data.getFolderContents(folderId);
+        const path = await data.getFolderPath(folderId);
+        res.json({ contents, path });
     } catch (error) {
-        res.status(500).json({ success: false, message: '讀取文件列表失敗。' });
+        res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' });
     }
 });
 
+// 新增：建立資料夾 API
+app.post('/api/folder', requireLogin, async (req, res) => {
+    try {
+        const { name, parentId } = req.body;
+        if (!name || !parentId) {
+            return res.status(400).json({ success: false, message: '缺少資料夾名稱或父 ID。' });
+        }
+        const result = await data.createFolder(name, parentId);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' });
+    }
+});
+
+
+// ... (其他 API 如 /thumbnail, /download/proxy 等保持不變，但它們現在依賴於 getFilesByIds，這是正確的) ...
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -239,5 +269,6 @@ app.get('/share/download/:token', async (req, res) => {
         res.status(500).send('下載失敗');
     }
 });
+
 
 app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
