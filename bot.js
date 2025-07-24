@@ -5,7 +5,6 @@ const data = require('./data.js');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
-// *** 關鍵修改：函式簽名加入了 folderId ***
 async function sendFile(fileBuffer, fileName, mimetype, caption = '', folderId = 1) {
   try {
     const formData = new FormData();
@@ -20,7 +19,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '', folderId =
         const fileData = result.document || result.video || result.audio || result.photo;
 
         if (fileData && fileData.file_id) {
-            // *** 關鍵修改：將 folderId 傳遞給資料庫 ***
+            // 這是確保新檔案能擷取到 thumb_file_id 的關鍵
             await data.addFile({
               fileName,
               mimetype: fileData.mime_type || mimetype,
@@ -70,7 +69,6 @@ async function deleteMessages(messageIds) {
     
     return results;
 }
-
 
 async function getFileLink(file_id) {
   if (!file_id || typeof file_id !== 'string') return null;
