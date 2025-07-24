@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // DOM 元素
-    const homeLink = document.getElementById('homeLink'); // 新增
+    const homeLink = document.getElementById('homeLink');
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
@@ -29,6 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
     const shareModal = document.getElementById('shareModal');
 
+    // --- *** 新增：上傳 Modal 相關元素 *** ---
+    const uploadModal = document.getElementById('uploadModal');
+    const showUploadModalBtn = document.getElementById('showUploadModalBtn');
+    const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const fileListContainer = document.getElementById('file-selection-list');
+    const folderSelect = document.getElementById('folderSelect');
+
     // 狀態
     let isMultiSelectMode = false;
     let currentFolderId = 1;
@@ -37,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let moveTargetFolderId = null;
     let isSearchMode = false;
 
+    // --- 核心功能：加載和渲染 ---
     const loadFolderContents = async (folderId) => {
         try {
             isSearchMode = false;
@@ -53,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
-
+    
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
@@ -68,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
             itemGrid.innerHTML = '<p>搜尋失敗。</p>';
         }
     };
-
     const renderBreadcrumb = (path) => {
         breadcrumb.innerHTML = '';
         path.forEach((p, index) => {
@@ -86,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
             breadcrumb.appendChild(link);
         });
     };
-
     const renderItems = (folders, files) => {
         itemGrid.innerHTML = '';
         if (folders.length === 0 && files.length === 0) {
@@ -96,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
         folders.forEach(f => itemGrid.appendChild(createItemCard(f)));
         files.forEach(f => itemGrid.appendChild(createItemCard(f)));
     };
-    
     const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -117,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
     };
-
     const getFileIconClass = (mimetype) => {
         if (!mimetype) return 'fa-file';
         if (mimetype.startsWith('image/')) return 'fa-file-image';
@@ -127,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mimetype.includes('archive') || mimetype.includes('zip')) return 'fa-file-archive';
         return 'fa-file-alt';
     };
-    
     const updateActionBar = () => {
         if (!actionBar) return;
         const count = selectedItems.size;
@@ -143,12 +148,111 @@ document.addEventListener('DOMContentLoaded', () => {
             multiSelectBtn.classList.remove('active');
         }
     };
-    
     const rerenderSelection = () => {
         document.querySelectorAll('.item-card').forEach(card => {
             card.classList.toggle('selected', selectedItems.has(card.dataset.id));
         });
     };
+
+    // --- *** 新增：上傳相關邏輯 *** ---
+    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB
+    let foldersLoaded = false;
+
+    const loadFoldersForUpload = async () => {
+        if (foldersLoaded) return;
+        try {
+            const res = await axios.get('/api/folders');
+            const folders = res.data;
+            folderSelect.innerHTML = ''; // 清空
+            const folderMap = new Map(folders.map(f => [f.id, { ...f, children: [] }]));
+            const tree = [];
+            folderMap.forEach(f => {
+                if (f.parent_id && folderMap.has(f.parent_id)) folderMap.get(f.parent_id).children.push(f);
+                else tree.push(f);
+            });
+            const buildOptions = (node, prefix = '') => {
+                const option = document.createElement('option');
+                option.value = node.id;
+                option.textContent = prefix + (node.id === 1 ? '/ (根目錄)' : node.name);
+                folderSelect.appendChild(option);
+                node.children.forEach(child => buildOptions(child, prefix + '　'));
+            };
+            tree.forEach(buildOptions);
+            foldersLoaded = true;
+        } catch (error) {
+            console.error('加載資料夾列表失敗', error);
+        }
+    };
+
+    if (uploadForm) {
+        fileInput.addEventListener('change', () => {
+            fileListContainer.innerHTML = '';
+            if (fileInput.files.length > 0) {
+                for (const file of fileInput.files) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = file.name;
+                    fileListContainer.appendChild(listItem);
+                }
+            }
+        });
+
+        uploadForm.onsubmit = async function (e) {
+            e.preventDefault();
+            if (fileInput.files.length === 0) { showNotification('請選擇文件', 'error'); return; }
+            for (const file of fileInput.files) {
+                if (file.size > MAX_TELEGRAM_SIZE) {
+                    showNotification(`檔案 "${file.name}" 過大，超過 50 MB 限制`, 'error');
+                    return;
+                }
+            }
+            const formData = new FormData(uploadForm);
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const progressArea = document.getElementById('progressArea');
+            const progressBar = document.getElementById('progressBar');
+            submitButton.disabled = true;
+            submitButton.textContent = '上傳中...';
+            progressArea.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+
+            try {
+                const res = await axios.post('/upload', formData, {
+                    onUploadProgress: p => {
+                        const percent = Math.round((p.loaded * 100) / p.total);
+                        progressBar.style.width = percent + '%';
+                        progressBar.textContent = percent + '%';
+                    }
+                });
+                if (res.data.success) {
+                    showNotification('上傳成功！', 'success');
+                    uploadModal.style.display = 'none'; // 關閉彈窗
+                    loadFolderContents(currentFolderId); // 刷新當前目錄
+                } else {
+                    showNotification('上傳失敗', 'error');
+                }
+            } catch (error) {
+                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = '上傳';
+                setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
+            }
+        };
+    }
+    
+    function showNotification(message, type = 'info') {
+        const existingNotif = document.querySelector('.notification');
+        if (existingNotif) { existingNotif.remove(); }
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            if (notification.parentElement) {
+              notification.parentElement.removeChild(notification);
+            }
+        }, 5000);
+    }
 
     // --- 事件監聽 ---
     if (homeLink) {
@@ -167,17 +271,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const type = card.dataset.type;
             const name = card.dataset.name;
             if (isMultiSelectMode) {
-                if (selectedItems.has(id)) {
-                    selectedItems.delete(id);
-                } else {
-                    selectedItems.set(id, { type, name });
-                }
+                if (selectedItems.has(id)) selectedItems.delete(id);
+                else selectedItems.set(id, { type, name });
             } else {
-                const isAlreadySelected = selectedItems.has(id);
+                const isSelected = selectedItems.has(id);
                 selectedItems.clear();
-                if (!isAlreadySelected) {
-                    selectedItems.set(id, { type, name });
-                }
+                if (!isSelected) selectedItems.set(id, { type, name });
             }
             rerenderSelection();
             updateActionBar();
@@ -190,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     if (breadcrumb) {
         breadcrumb.addEventListener('click', e => {
             e.preventDefault();
@@ -200,12 +300,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
             const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
             loadFolderContents(folderId);
         }
     });
+
     if (createFolderBtn) {
         createFolderBtn.addEventListener('click', async () => {
             const name = prompt('請輸入新資料夾的名稱：');
@@ -217,6 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -225,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else loadFolderContents(currentFolderId);
         });
     }
+
     if (multiSelectBtn) {
         multiSelectBtn.addEventListener('click', () => {
             isMultiSelectMode = !isMultiSelectMode;
@@ -238,24 +342,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', () => {
             isMultiSelectMode = true;
-            multiSelectBtn.classList.add('active');
+            if (multiSelectBtn) multiSelectBtn.classList.add('active');
             const allVisibleItems = [...currentFolderContents.folders, ...currentFolderContents.files];
             const allVisibleIds = allVisibleItems.map(item => String(item.id));
             const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedItems.has(id));
             if (isAllSelected) {
                 selectedItems.clear();
             } else {
-                allVisibleItems.forEach(item => {
-                    selectedItems.set(String(item.id), { type: item.type, name: item.name });
-                });
+                allVisibleItems.forEach(item => selectedItems.set(String(item.id), { type: item.type, name: item.name }));
             }
             rerenderSelection();
             updateActionBar();
         });
     }
+
+    if (showUploadModalBtn) {
+        showUploadModalBtn.addEventListener('click', async () => {
+            await loadFoldersForUpload();
+            folderSelect.value = currentFolderId; // 自動選中當前資料夾
+            uploadModal.style.display = 'flex';
+        });
+    }
+
+    if (closeUploadModalBtn) {
+        closeUploadModalBtn.addEventListener('click', () => {
+            uploadModal.style.display = 'none';
+        });
+    }
+    
+    // ... (所有其他按鈕和模態框的事件監聽器保持不變) ...
     if (previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
