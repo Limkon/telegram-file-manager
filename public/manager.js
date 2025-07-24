@@ -8,8 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
-
-    // 操作按鈕
     const multiSelectBtn = document.getElementById('multiSelectBtn');
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
@@ -18,8 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
-
-    // 模態框
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -28,8 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmMoveBtn = document.getElementById('confirmMoveBtn');
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
     const shareModal = document.getElementById('shareModal');
-
-    // --- *** 新增：上傳 Modal 相關元素 *** ---
     const uploadModal = document.getElementById('uploadModal');
     const showUploadModalBtn = document.getElementById('showUploadModalBtn');
     const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
@@ -46,7 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let moveTargetFolderId = null;
     let isSearchMode = false;
 
-    // --- 核心功能：加載和渲染 ---
+    // --- 上傳邏輯相關常數 ---
+    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB
+    let foldersLoaded = false;
+
+    // --- 輔助函式 ---
+    const formatBytes = (bytes, decimals = 2) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+    
+    // ... (所有核心功能函式) ...
     const loadFolderContents = async (folderId) => {
         try {
             isSearchMode = false;
@@ -63,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
-    
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
@@ -110,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
         card.dataset.id = item.id;
         card.dataset.type = item.type;
         card.dataset.name = item.name;
-        
         const fullFile = currentFolderContents.files.find(f => f.id === item.id);
         let iconHtml = '';
         if (item.type === 'file' && fullFile && fullFile.thumb_file_id) {
@@ -153,17 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.toggle('selected', selectedItems.has(card.dataset.id));
         });
     };
-
-    // --- *** 新增：上傳相關邏輯 *** ---
-    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB
-    let foldersLoaded = false;
-
     const loadFoldersForUpload = async () => {
         if (foldersLoaded) return;
         try {
             const res = await axios.get('/api/folders');
             const folders = res.data;
-            folderSelect.innerHTML = ''; // 清空
+            folderSelect.innerHTML = '';
             const folderMap = new Map(folders.map(f => [f.id, { ...f, children: [] }]));
             const tree = [];
             folderMap.forEach(f => {
@@ -183,63 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('加載資料夾列表失敗', error);
         }
     };
-
-    if (uploadForm) {
-        fileInput.addEventListener('change', () => {
-            fileListContainer.innerHTML = '';
-            if (fileInput.files.length > 0) {
-                for (const file of fileInput.files) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = file.name;
-                    fileListContainer.appendChild(listItem);
-                }
-            }
-        });
-
-        uploadForm.onsubmit = async function (e) {
-            e.preventDefault();
-            if (fileInput.files.length === 0) { showNotification('請選擇文件', 'error'); return; }
-            for (const file of fileInput.files) {
-                if (file.size > MAX_TELEGRAM_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過 50 MB 限制`, 'error');
-                    return;
-                }
-            }
-            const formData = new FormData(uploadForm);
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            const progressArea = document.getElementById('progressArea');
-            const progressBar = document.getElementById('progressBar');
-            submitButton.disabled = true;
-            submitButton.textContent = '上傳中...';
-            progressArea.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressBar.textContent = '0%';
-
-            try {
-                const res = await axios.post('/upload', formData, {
-                    onUploadProgress: p => {
-                        const percent = Math.round((p.loaded * 100) / p.total);
-                        progressBar.style.width = percent + '%';
-                        progressBar.textContent = percent + '%';
-                    }
-                });
-                if (res.data.success) {
-                    showNotification('上傳成功！', 'success');
-                    uploadModal.style.display = 'none'; // 關閉彈窗
-                    loadFolderContents(currentFolderId); // 刷新當前目錄
-                } else {
-                    showNotification('上傳失敗', 'error');
-                }
-            } catch (error) {
-                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = '上傳';
-                setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
-            }
-        };
-    }
-    
     function showNotification(message, type = 'info') {
         const existingNotif = document.querySelector('.notification');
         if (existingNotif) { existingNotif.remove(); }
@@ -255,6 +199,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 事件監聽 ---
+    if (uploadForm) {
+        fileInput.addEventListener('change', () => {
+            fileListContainer.innerHTML = '';
+            if (fileInput.files.length > 0) {
+                for (const file of fileInput.files) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = file.name;
+                    fileListContainer.appendChild(listItem);
+                }
+            }
+        });
+
+        uploadForm.onsubmit = async function (e) {
+            e.preventDefault();
+            if (fileInput.files.length === 0) { showNotification('請選擇文件', 'error'); return; }
+            
+            // --- *** 關鍵修正：使用動態參數的檔案大小檢查 *** ---
+            for (const file of fileInput.files) {
+                if (file.size > MAX_TELEGRAM_SIZE) {
+                    showNotification(`檔案 "${file.name}" 過大，超過 Telegram ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error');
+                    return;
+                }
+            }
+            
+            const formData = new FormData(uploadForm);
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const progressArea = document.getElementById('progressArea');
+            const progressBar = document.getElementById('progressBar');
+            submitButton.disabled = true;
+            submitButton.textContent = '上傳中...';
+            progressArea.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            try {
+                const res = await axios.post('/upload', formData, {
+                    onUploadProgress: p => {
+                        const percent = Math.round((p.loaded * 100) / p.total);
+                        progressBar.style.width = percent + '%';
+                        progressBar.textContent = percent + '%';
+                    }
+                });
+                if (res.data.success) {
+                    showNotification('上傳成功！', 'success');
+                    uploadModal.style.display = 'none';
+                    loadFolderContents(currentFolderId);
+                } else {
+                    showNotification('上傳失敗', 'error');
+                }
+            } catch (error) {
+                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = '上傳';
+                setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
+            }
+        };
+    }
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -262,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadFolderContents(1);
         });
     }
-
     if (itemGrid) {
         itemGrid.addEventListener('click', e => {
             const card = e.target.closest('.item-card');
@@ -289,7 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     if (breadcrumb) {
         breadcrumb.addEventListener('click', e => {
             e.preventDefault();
@@ -300,14 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
             const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
             loadFolderContents(folderId);
         }
     });
-
     if (createFolderBtn) {
         createFolderBtn.addEventListener('click', async () => {
             const name = prompt('請輸入新資料夾的名稱：');
@@ -319,7 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -328,7 +324,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else loadFolderContents(currentFolderId);
         });
     }
-
     if (multiSelectBtn) {
         multiSelectBtn.addEventListener('click', () => {
             isMultiSelectMode = !isMultiSelectMode;
@@ -342,7 +337,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', () => {
             isMultiSelectMode = true;
@@ -359,22 +353,18 @@ document.addEventListener('DOMContentLoaded', () => {
             updateActionBar();
         });
     }
-
     if (showUploadModalBtn) {
         showUploadModalBtn.addEventListener('click', async () => {
             await loadFoldersForUpload();
-            folderSelect.value = currentFolderId; // 自動選中當前資料夾
+            folderSelect.value = currentFolderId;
             uploadModal.style.display = 'flex';
         });
     }
-
     if (closeUploadModalBtn) {
         closeUploadModalBtn.addEventListener('click', () => {
             uploadModal.style.display = 'none';
         });
     }
-    
-    // ... (所有其他按鈕和模態框的事件監聽器保持不變) ...
     if (previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
