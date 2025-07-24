@@ -44,7 +44,6 @@
     
     #homeLink { text-decoration: none; color: var(--text-color); display: inline-flex; align-items: center; gap: 10px; }
     
-    /* --- *** 新增：分類按鈕樣式 *** --- */
     .categories { margin-bottom: 20px; white-space: nowrap; overflow-x: auto; padding-bottom: 5px; }
     .categories button { padding: 8px 15px; border: 1px solid var(--border-color); background-color: transparent; border-radius: 20px; cursor: pointer; margin-right: 8px; transition: all 0.2s; }
     .categories button.active, .categories button:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
@@ -122,29 +121,6 @@
         <div id="folderTree"></div>
         <button id="confirmMoveBtn" disabled>確定移動</button>
         <button id="cancelMoveBtn">取消</button>
-    </div>
-  </div>
-
-  <div id="uploadModal" class="modal">
-    <div class="upload-modal-content">
-        <span class="close-button" id="closeUploadModalBtn">&times;</span>
-        <h2>文件上傳</h2>
-        <div id="uploadNotificationArea"></div>
-        <form id="uploadForm">
-            <input type="file" name="files" id="fileInput" required multiple />
-            <ul id="file-selection-list"></ul>
-            <label for="folderSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">上傳到資料夾：</label>
-            <select name="folderId" id="folderSelect">
-                <option value="1">/ (根目錄)</option>
-            </select>
-            <input type="text" name="caption" placeholder="可選的說明文字(對所有文件生效)" />
-            <button type="submit">上傳</button>
-        </form>
-        <div class="progress-area" id="progressArea">
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar">0%</div>
-            </div>
-        </div>
     </div>
   </div>
 
