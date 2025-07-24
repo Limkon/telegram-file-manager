@@ -1,30 +1,31 @@
 require('dotenv').config();
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const FormData = require('form-data');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'messages.json');
 
-// KV 版本的 loadMessages
-async function loadMessages() {
+function loadMessages() {
   try {
-    // 從綁定的 KV 命名空間 'DATA' 中讀取 'messages'
-    // Cloudflare Pages/Workers 會自動將綁定的 KV 注入 process.env
-    const messages = await process.env.DATA.get('messages', { type: 'json' });
-    return messages || [];
-  } catch (e) {
-    console.error("從 KV 讀取 messages 失敗:", e);
-    return [];
-  }
+    if (fs.existsSync(DATA_FILE)) {
+      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    }
+  } catch (e) { console.error("讀取 messages.json 失敗:", e); }
+  return [];
 }
 
-// KV 版本的 saveMessages
-async function saveMessages(messages) {
+function saveMessages(messages) {
   try {
-    // 將 messages 寫入到 KV 中
-    await process.env.DATA.put('messages', JSON.stringify(messages, null, 2));
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR);
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(messages, null, 2), 'utf-8');
     return true;
   } catch (e) {
-    console.error("寫入 messages 到 KV 失敗:", e);
+    console.error("寫入 messages.json 失敗:", e);
     return false;
   }
 }
@@ -35,7 +36,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
     formData.append('chat_id', process.env.CHANNEL_ID);
     formData.append('caption', caption || fileName);
     formData.append('document', fileBuffer, { filename: fileName });
-
+    
     const res = await axios.post(`${TELEGRAM_API}/sendDocument`, formData, { headers: formData.getHeaders() });
 
     if (res.data.ok) {
@@ -43,8 +44,9 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
       const fileData = result.document || result.video || result.audio || result.photo;
 
       if (fileData && fileData.file_id) {
-        const messages = await loadMessages(); // 改為異步讀取
-
+        const messages = loadMessages();
+        
+        // *** 關鍵修正：捕獲縮略圖 file_id ***
         let thumb_file_id = null;
         if (fileData.thumb) {
             thumb_file_id = fileData.thumb.file_id;
@@ -55,14 +57,14 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
           mimetype: fileData.mime_type || mimetype,
           message_id: result.message_id,
           file_id: fileData.file_id,
-          thumb_file_id: thumb_file_id,
+          thumb_file_id: thumb_file_id, // 保存縮略圖ID
           date: Date.now(),
         });
-
-        if (await saveMessages(messages)) { // 改為異步儲存
+        
+        if (saveMessages(messages)) {
             return { success: true, data: res.data };
         } else {
-            return { success: false, error: { description: "文件已上傳，但無法保存到 KV 數據庫。" } };
+            return { success: false, error: { description: "文件已上傳，但無法保存到本地數據庫。" } };
         }
       }
     }
@@ -76,7 +78,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
 async function deleteMessages(messageIds) {
     const results = { success: [], failure: [] };
     if (!Array.isArray(messageIds)) return results;
-
+    
     for (const messageId of messageIds) {
         try {
             const res = await axios.post(`${TELEGRAM_API}/deleteMessage`, {
@@ -99,11 +101,11 @@ async function deleteMessages(messageIds) {
     }
 
     if (results.success.length > 0) {
-        let messages = await loadMessages(); // 改為異步讀取
+        let messages = loadMessages();
         const remainingMessages = messages.filter(m => !results.success.includes(m.message_id));
-        await saveMessages(remainingMessages); // 改為異步儲存
+        saveMessages(remainingMessages);
     }
-
+    
     return results;
 }
 
@@ -118,11 +120,11 @@ async function getFileLink(file_id) {
 }
 
 async function renameFileInDb(messageId, newFileName) {
-    const messages = await loadMessages(); // 改為異步讀取
+    const messages = loadMessages();
     const fileIndex = messages.findIndex(m => m.message_id === messageId);
     if (fileIndex > -1) {
         messages[fileIndex].fileName = newFileName;
-        if (await saveMessages(messages)) { // 改為異步儲存
+        if (saveMessages(messages)) {
             return { success: true, file: messages[fileIndex] };
         }
     }

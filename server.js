@@ -9,7 +9,7 @@ const { sendFile, loadMessages, getFileLink, renameFileInDb, deleteMessages } = 
 const app = express();
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage, limits: { fileSize: 1000 * 1024 * 1024 } });
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8100;
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-strong-random-secret-here-please-change',
@@ -49,7 +49,7 @@ app.post('/login', (req, res) => {
 app.get('/', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
 app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
 
-// --- API 接口 (全部改為 async) ---
+// --- API 接口 ---
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, message: '沒有選擇文件' });
@@ -62,21 +62,22 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
-app.get('/files', requireLogin, async (req, res) => {
-    res.json(await loadMessages());
-});
+app.get('/files', requireLogin, (req, res) => res.json(loadMessages()));
 
+// *** 新增：縮略圖獲取接口 ***
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     const messageId = parseInt(req.params.message_id, 10);
-    const messages = await loadMessages();
+    const messages = loadMessages();
     const fileInfo = messages.find(m => m.message_id === messageId);
 
     if (fileInfo && fileInfo.thumb_file_id) {
         const link = await getFileLink(fileInfo.thumb_file_id);
         if (link) {
+            // 重定向到 Telegram 的臨時鏈接
             return res.redirect(link);
         }
     }
+    // 如果沒有縮略圖，返回一個透明的 1x1 像素圖片作為佔位符
     const placeholder = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
     res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': placeholder.length });
     res.end(placeholder);
@@ -84,7 +85,7 @@ app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
 
 app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
     const messageId = parseInt(req.params.message_id, 10);
-    const messages = await loadMessages();
+    const messages = loadMessages();
     const fileInfo = messages.find(m => m.message_id === messageId);
     if (fileInfo && fileInfo.file_id) {
         const link = await getFileLink(fileInfo.file_id);
@@ -100,7 +101,7 @@ app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
 
 app.get('/file/content/:message_id', requireLogin, async (req, res) => {
     const messageId = parseInt(req.params.message_id, 10);
-    const messages = await loadMessages();
+    const messages = loadMessages();
     const fileInfo = messages.find(m => m.message_id === messageId);
     if (fileInfo && fileInfo.file_id) {
         const link = await getFileLink(fileInfo.file_id);
@@ -128,11 +129,4 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     res.json(result);
 });
 
-// Cloudflare Pages 需要一個單一的入口點
-// 我們將 Express app 導出給 Cloudflare 的 adapter
-module.exports = app;
-
-// 如果不是在 Cloudflare 環境下運行 (例如本地開發)，則正常監聽端口
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
-}
+app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
