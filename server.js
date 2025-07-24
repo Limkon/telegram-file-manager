@@ -1,3 +1,6 @@
+// --- 偵錯日誌 ---
+console.log('--- [DEBUG] server.js 檔案開始執行 (v_debug_01) ---');
+
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
@@ -94,12 +97,19 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
 });
 
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
+    // --- 偵錯日誌 ---
+    console.log(`--- [DEBUG - server.js] 收到對 /api/folder/:id 的請求 ---`);
+    console.log(`請求的 URL: ${req.originalUrl}`);
+    console.log(`解析出的 folderId: ${req.params.id}`);
+    
     try {
         const folderId = parseInt(req.params.id, 10);
         const contents = await data.getFolderContents(folderId);
         const path = await data.getFolderPath(folderId);
+        console.log(`[DEBUG - server.js] 成功獲取資料，準備回傳 JSON。`);
         res.json({ contents, path });
     } catch (error) {
+        console.error(`[DEBUG - server.js] 處理 /api/folder/:id 時發生錯誤:`, error);
         res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' });
     }
 });
@@ -117,6 +127,7 @@ app.post('/api/folder', requireLogin, async (req, res) => {
     }
 });
 
+// ... (檔案中所有其他路由保持不變) ...
 app.get('/api/folders', requireLogin, async (req, res) => {
     try {
         const folders = await data.getAllFolders();
@@ -125,7 +136,6 @@ app.get('/api/folders', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '獲取資料夾列表失敗' });
     }
 });
-
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId } = req.body;
@@ -138,7 +148,6 @@ app.post('/api/move', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '移動失敗' });
     }
 });
-
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     try {
         const { folderId } = req.body;
@@ -154,31 +163,25 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '刪除資料夾失敗' });
     }
 });
-
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
         const [fileInfo] = await data.getFilesByIds([messageId]);
-
         if (fileInfo && fileInfo.thumb_file_id) {
             const link = await getFileLink(fileInfo.thumb_file_id);
             if (link) return res.redirect(link);
         }
-        
         const placeholder = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
         res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': placeholder.length });
         res.end(placeholder);
-
     } catch (error) {
         res.status(500).send('獲取縮圖失敗');
     }
 });
-
 app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
         const [fileInfo] = await data.getFilesByIds([messageId]);
-
         if (fileInfo && fileInfo.file_id) {
             const link = await getFileLink(fileInfo.file_id);
             if (link) {
@@ -191,7 +194,6 @@ app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
         res.status(500).send('下載代理失敗');
     }
 });
-
 app.get('/file/content/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -208,7 +210,6 @@ app.get('/file/content/:message_id', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '無法獲取文件內容。' });
     }
 });
-
 app.post('/rename', requireLogin, async (req, res) => {
     try {
         const { messageId, newFileName } = req.body;
@@ -219,7 +220,6 @@ app.post('/rename', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '重命名失敗' });
     }
 });
-
 app.post('/delete-multiple', requireLogin, async (req, res) => {
     try {
         const { messageIds } = req.body;
@@ -230,7 +230,6 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '刪除失敗' });
     }
 });
-
 app.post('/share', requireLogin, async (req, res) => {
     try {
         const { messageId, expiresIn } = req.body;
@@ -246,7 +245,6 @@ app.post('/share', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '創建分享鏈接失敗' });
     }
 });
-
 app.get('/api/shared-files', requireLogin, async (req, res) => {
     try {
         const files = await data.getActiveSharedFiles();
@@ -259,7 +257,6 @@ app.get('/api/shared-files', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '獲取分享列表失敗' });
     }
 });
-
 app.post('/api/cancel-share', requireLogin, async (req, res) => {
     try {
         const { messageId } = req.body;
@@ -270,16 +267,13 @@ app.post('/api/cancel-share', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '取消分享失敗' });
     }
 });
-
 app.get('/share/view/:token', async (req, res) => {
     try {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
-        
         if (fileInfo) {
             const downloadUrl = `/share/download/${token}`;
             let textContent = null;
-
             if (fileInfo.mimetype && fileInfo.mimetype.startsWith('text/')) {
                 const link = await getFileLink(fileInfo.file_id);
                 if (link) {
@@ -287,7 +281,6 @@ app.get('/share/view/:token', async (req, res) => {
                     textContent = response.data;
                 }
             }
-            
             res.render('share-view', { file: fileInfo, downloadUrl, textContent });
         } else {
             res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
@@ -296,7 +289,6 @@ app.get('/share/view/:token', async (req, res) => {
         res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' });
     }
 });
-
 app.get('/share/download/:token', async (req, res) => {
     try {
         const token = req.params.token;
@@ -313,6 +305,5 @@ app.get('/share/download/:token', async (req, res) => {
         res.status(500).send('下載失敗');
     }
 });
-
 
 app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
