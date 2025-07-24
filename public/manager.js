@@ -3,13 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
-    // --- *** 關鍵修正 1：使用正確的 ID 'selectionCount' *** ---
     const selectionCountSpan = document.getElementById('selectionCount');
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
-
-    // 操作按鈕
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
     const renameBtn = document.getElementById('renameBtn');
@@ -17,8 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
-
-    // 模態框
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -94,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         folders.forEach(f => itemGrid.appendChild(createItemCard(f)));
         files.forEach(f => itemGrid.appendChild(createItemCard(f)));
     };
-
+    
     const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -111,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
         }
-
         card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name}</h5></div>`;
         if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
@@ -144,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
         actionBar.classList.toggle('visible', count > 0);
     };
 
-    // --- 事件監聽 ---
     if (itemGrid) {
         itemGrid.addEventListener('click', e => {
             const card = e.target.closest('.item-card');
@@ -161,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             updateActionBar();
         });
-
         itemGrid.addEventListener('dblclick', e => {
             const card = e.target.closest('.item-card');
             if (card && card.dataset.type === 'folder') {
@@ -170,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
     if (breadcrumb) {
         breadcrumb.addEventListener('click', e => {
             e.preventDefault();
@@ -181,14 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
             const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
             loadFolderContents(folderId);
         }
     });
-
     if (createFolderBtn) {
         createFolderBtn.addEventListener('click', async () => {
             const name = prompt('請輸入新資料夾的名稱：');
@@ -200,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -209,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else loadFolderContents(currentFolderId);
         });
     }
-
     if (previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
@@ -236,7 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     if (renameBtn) {
         renameBtn.addEventListener('click', async () => {
              if (renameBtn.disabled) return;
@@ -258,26 +244,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (downloadBtn) {
-        downloadBtn.addEventListener('click', () => {
+        downloadBtn.addEventListener('click', async () => {
             if (downloadBtn.disabled) return;
             const filesToDownload = [];
             selectedItems.forEach((item, id) => {
-                if (item.type === 'file') filesToDownload.push(id);
+                if (item.type === 'file') filesToDownload.push(parseInt(id));
             });
-            let i = 0;
-            const downloadInterval = setInterval(() => {
-                if (i >= filesToDownload.length) {
-                    clearInterval(downloadInterval);
-                    return;
-                }
+            if (filesToDownload.length === 0) return;
+            if (filesToDownload.length === 1) {
+                window.location.href = `/download/proxy/${filesToDownload[0]}`;
+                return;
+            }
+            try {
+                const response = await axios.post('/api/download-archive', { messageIds: filesToDownload }, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([response.data]));
                 const link = document.createElement('a');
-                link.href = `/download/proxy/${filesToDownload[i]}`;
-                link.style.display = 'none';
+                link.href = url;
+                const timestamp = new Date().getTime();
+                link.setAttribute('download', `download-${timestamp}.zip`);
                 document.body.appendChild(link);
                 link.click();
+                window.URL.revokeObjectURL(url);
                 document.body.removeChild(link);
-                i++;
-            }, 300);
+            } catch (error) {
+                alert('下載壓縮檔失敗！');
+            }
         });
     }
     
@@ -391,16 +382,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    // --- *** 關鍵修正 2：補回全選按鈕的事件監聽器 *** ---
+    
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', () => {
             const allVisibleItems = [...currentFolderContents.folders, ...currentFolderContents.files];
             const allVisibleIds = allVisibleItems.map(item => String(item.id));
-            
-            // 如果目前所有可見項目都已被選中，則取消全選
             const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedItems.has(id));
-
             if (isAllSelected) {
                 selectedItems.clear();
             } else {
@@ -410,7 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
-            // 重新渲染以更新選中狀態
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         });
@@ -421,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalContent.innerHTML = '';
     };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
-
+    
     if (document.getElementById('itemGrid')) {
         const initialFolderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
         loadFolderContents(initialFolderId);
