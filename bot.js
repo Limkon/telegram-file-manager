@@ -4,7 +4,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-const crypto = require('crypto'); // 新增 crypto 模块
+const crypto = require('crypto');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -60,7 +60,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
           file_id: fileData.file_id,
           thumb_file_id: thumb_file_id,
           date: Date.now(),
-          share: null // 新增分享状态字段
+          share: null
         });
         
         if (saveMessages(messages)) {
@@ -133,12 +133,10 @@ async function renameFileInDb(messageId, newFileName) {
     return { success: false, message: '文件未找到或保存失敗。' };
 }
 
-// --- 新增分享功能相关函数 ---
-
 /**
  * 创建或更新文件的分享链接
  * @param {number} messageId 文件的 message_id
- * @param {string} expiresIn 过期时间 ('1h', '24h', '0' for permanent)
+ * @param {string} expiresIn 过期时间
  * @returns {object} 操作结果
  */
 async function createShareLink(messageId, expiresIn) {
@@ -150,12 +148,23 @@ async function createShareLink(messageId, expiresIn) {
     }
 
     const token = crypto.randomBytes(16).toString('hex');
+    
+    // *** 關鍵修正：處理新的有效期選項 ***
     let expiresAt = null;
+    const now = Date.now();
+    const hours = (h) => h * 60 * 60 * 1000;
+    const days = (d) => d * 24 * 60 * 60 * 1000;
 
-    if (expiresIn === '1h') {
-        expiresAt = Date.now() + 60 * 60 * 1000;
-    } else if (expiresIn === '24h') {
-        expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    switch (expiresIn) {
+        case '1h': expiresAt = now + hours(1); break;
+        case '3h': expiresAt = now + hours(3); break;
+        case '5h': expiresAt = now + hours(5); break;
+        case '7h': expiresAt = now + hours(7); break;
+        case '24h': expiresAt = now + hours(24); break;
+        case '7d': expiresAt = now + days(7); break;
+        case '0': expiresAt = null; break; // Permanent
+        default: // 如果值意外，默认为 24 小时
+            expiresAt = now + hours(24);
     }
 
     messages[fileIndex].share = {
@@ -180,15 +189,13 @@ async function getSharedFile(token) {
     const file = messages.find(m => m.share && m.share.token === token);
 
     if (!file) {
-        return null; // Token 无效
+        return null;
     }
 
-    // 检查是否过期
     if (file.share.expiresAt && Date.now() > file.share.expiresAt) {
-        // 可选：在这里可以顺便清理掉过期的 token
         file.share = null;
         saveMessages(messages);
-        return null; // 已过期
+        return null;
     }
 
     return file;
@@ -201,6 +208,6 @@ module.exports = {
   getFileLink, 
   renameFileInDb, 
   deleteMessages,
-  createShareLink, // 导出新函数
-  getSharedFile    // 导出新函数
+  createShareLink,
+  getSharedFile
 };
