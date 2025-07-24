@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const homeLink = document.getElementById('homeLink');
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
+    const categories = document.getElementById('categories');
     const actionBar = document.getElementById('actionBar');
     const selectionCountSpan = document.getElementById('selectionCount');
     const createFolderBtn = document.querySelector('.create-folder-btn');
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('fileInput');
     const fileListContainer = document.getElementById('file-selection-list');
     const folderSelect = document.getElementById('folderSelect');
-    const uploadNotificationArea = document.getElementById('uploadNotificationArea'); // 新增
+    const uploadNotificationArea = document.getElementById('uploadNotificationArea');
 
     // 狀態
     let isMultiSelectMode = false;
@@ -53,19 +54,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
     };
     
-    // --- *** 關鍵修正 1：更新通知函式 *** ---
+    const getFileCategory = (mimetype) => {
+        if (!mimetype) return 'other';
+        if (mimetype.startsWith('image/')) return 'image';
+        if (mimetype.startsWith('video/')) return 'video';
+        if (mimetype.startsWith('audio/')) return 'audio';
+        if (mimetype.startsWith('application/pdf') || mimetype.startsWith('text/') || mimetype.includes('document')) return 'document';
+        if (mimetype.startsWith('application/zip') || mimetype.includes('archive')) return 'archive';
+        return 'other';
+    };
+    
     function showNotification(message, type = 'info', container = null) {
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
-
         if (container) {
-            // 局部通知
             notification.classList.add('local');
-            container.innerHTML = ''; // 清空之前的通知
+            container.innerHTML = '';
             container.appendChild(notification);
         } else {
-            // 全域通知
             notification.classList.add('global');
             const existingNotif = document.querySelector('.notification.global');
             if (existingNotif) existingNotif.remove();
@@ -76,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- 核心功能：加載和渲染 ---
     const loadFolderContents = async (folderId) => {
         try {
             isSearchMode = false;
@@ -86,12 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFolderContents = res.data.contents;
             selectedItems.clear();
             renderBreadcrumb(res.data.path);
-            renderItems(currentFolderContents.folders, currentFolderContents.files);
+            filterAndRender();
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
+    
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
@@ -100,12 +109,25 @@ document.addEventListener('DOMContentLoaded', () => {
             currentFolderContents = res.data.contents;
             selectedItems.clear();
             renderBreadcrumb(res.data.path);
-            renderItems(currentFolderContents.folders, currentFolderContents.files);
+            filterAndRender();
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>搜尋失敗。</p>';
         }
     };
+
+    const filterAndRender = () => {
+        const activeCategory = categories.querySelector('.active').dataset.category;
+        const foldersToRender = isSearchMode ? [] : currentFolderContents.folders;
+        
+        let filesToRender = currentFolderContents.files;
+        if (activeCategory !== 'all') {
+            filesToRender = currentFolderContents.files.filter(file => getFileCategory(file.mimetype) === activeCategory);
+        }
+        
+        renderItems(foldersToRender, filesToRender);
+    };
+
     const renderBreadcrumb = (path) => {
         breadcrumb.innerHTML = '';
         path.forEach((p, index) => {
@@ -138,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         card.dataset.id = item.id;
         card.dataset.type = item.type;
         card.dataset.name = item.name;
+        
         const fullFile = currentFolderContents.files.find(f => f.id === item.id);
         let iconHtml = '';
         if (item.type === 'file' && fullFile && fullFile.thumb_file_id) {
@@ -218,23 +241,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-
         uploadForm.onsubmit = async function (e) {
             e.preventDefault();
-            if (fileInput.files.length === 0) { 
-                showNotification('請選擇文件', 'error', uploadNotificationArea); 
-                return; 
-            }
-            
+            if (fileInput.files.length === 0) { showNotification('請選擇文件', 'error', uploadNotificationArea); return; }
             for (const file of fileInput.files) {
                 if (file.size > MAX_TELEGRAM_SIZE) {
-                    // --- *** 關鍵修正 2：將通知顯示在彈窗內 *** ---
                     showNotification(`檔案 "${file.name}" 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadNotificationArea);
                     return;
                 }
             }
-            
-            uploadNotificationArea.innerHTML = ''; // 清空舊通知
+            uploadNotificationArea.innerHTML = '';
             const formData = new FormData(uploadForm);
             const submitButton = e.target.querySelector('button[type="submit"]');
             const progressArea = document.getElementById('progressArea');
@@ -268,6 +284,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    
+    if (categories) {
+        categories.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                categories.querySelector('.active').classList.remove('active');
+                e.target.classList.add('active');
+                filterAndRender();
+            }
+        });
+    }
+
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -369,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showUploadModalBtn.addEventListener('click', async () => {
             await loadFoldersForUpload();
             folderSelect.value = currentFolderId;
-            uploadNotificationArea.innerHTML = ''; // 清空舊通知
+            uploadNotificationArea.innerHTML = '';
             uploadForm.reset();
             fileListContainer.innerHTML = '';
             uploadModal.style.display = 'flex';
