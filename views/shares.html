@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>共享管理</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/manager.css">
     <style>
-        body { padding: 20px; }
+        body {
+            padding: 20px;
+        }
         .table-container { 
             background-color: white; 
             padding: 20px; 
@@ -25,7 +27,9 @@
             text-align: left; 
             border-bottom: 1px solid #dee2e6;
         }
-        th { background-color: #f8f9fa; }
+        th {
+            background-color: #f8f9fa;
+        }
         .file-name {
             max-width: 300px;
             white-space: nowrap;
@@ -51,8 +55,14 @@
             cursor: pointer;
             flex-shrink: 0;
         }
-        .copy-btn { background-color: #007bff; color: white; }
-        .cancel-btn { background-color: #dc3545; color: white; }
+        .copy-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -73,12 +83,11 @@
                         <th>操作</th>
                     </tr>
                 </thead>
-                <tbody id="sharesTableBody">
-                    </tbody>
+                <tbody id="sharesTableBody"></tbody>
             </table>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/vendor/axios/axios.min.js"></script>
     <script src="/shares.js"></script>
 </body>
 </html>
