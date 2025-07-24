@@ -43,23 +43,11 @@
     #multiSelectBtn.active { background-color: var(--primary-color); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary-color); }
     
     #homeLink { text-decoration: none; color: var(--text-color); display: inline-flex; align-items: center; gap: 10px; }
-
-    /* 上傳彈窗相關樣式 */
-    .upload-modal-content { background-color: var(--card-background); padding: 24px; border-radius: 8px; box-shadow: var(--shadow); width: 100%; max-width: 600px; position: relative; }
-    #uploadForm input, #uploadForm button, #uploadForm select { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
-    #uploadForm button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-size: 16px; }
-    #file-selection-list { margin-top: -10px; margin-bottom: 15px; padding-left: 0; list-style-type: none; max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; padding: 5px; }
-    #file-selection-list li { font-size: 14px; padding: 5px 10px; background-color: #f8f9fa; margin-bottom: 5px; border-radius: 3px; }
-    .progress-area { margin-top: 15px; display: none; }
-    .progress-bar-container { width: 100%; height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; }
-    .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.4s ease; }
     
-    /* --- *** 新增：通知樣式 *** --- */
-    .notification { padding: 12px 20px; border-radius: 5px; color: white; z-index: 1000; font-weight: bold; }
-    .notification.global { position: fixed; top: 20px; right: 20px; } /* 全域通知 */
-    .notification.local { margin-bottom: 15px; } /* 局部通知 */
-    .notification.success { background-color: #28a745; }
-    .notification.error { background-color: #dc3545; }
+    /* --- *** 新增：分類按鈕樣式 *** --- */
+    .categories { margin-bottom: 20px; white-space: nowrap; overflow-x: auto; padding-bottom: 5px; }
+    .categories button { padding: 8px 15px; border: 1px solid var(--border-color); background-color: transparent; border-radius: 20px; cursor: pointer; margin-right: 8px; transition: all 0.2s; }
+    .categories button.active, .categories button:hover { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
   </style>
 </head>
 <body>
@@ -81,6 +69,16 @@
             <i class="fas fa-search"></i>
             <input type="search" id="searchInput" placeholder="搜尋所有檔案...">
         </form>
+    </div>
+
+    <div class="categories" id="categories">
+        <button class="active" data-category="all">全部</button>
+        <button data-category="image">圖片</button>
+        <button data-category="video">影片</button>
+        <button data-category="audio">音檔</button>
+        <button data-category="document">文檔</button>
+        <button data-category="archive">壓縮檔</button>
+        <button data-category="other">其他</button>
     </div>
 
     <div class="item-grid" id="itemGrid"></div>
