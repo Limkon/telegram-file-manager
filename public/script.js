@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uploadForm = document.getElementById('uploadForm');
 
     // --- *** 關鍵修正 1：定義檔案大小限制 *** ---
-    const MAX_SERVER_SIZE = 1000 * 1024 * 1024; // 1 GB (與 server.js 中 multer 的設定保持一致)
+    const MAX_SERVER_SIZE = 50 * 1024 * 1024; // 1 GB (與 server.js 中 multer 的設定保持一致)
     const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB (Telegram Bot API 的實際限制)
 
     // --- 加載資料夾列表 ---
