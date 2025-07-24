@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 function searchFiles(query) {
     return new Promise((resolve, reject) => {
-        const sql = `SELECT message_id as id, fileName as name, mimetype, date, 'file' as type 
+        const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
                      FROM files 
                      WHERE name LIKE ? 
                      ORDER BY date DESC`;
@@ -16,25 +16,16 @@ function searchFiles(query) {
 }
 
 function getFolderContents(folderId = 1) {
-    // --- 偵錯日誌 ---
-    console.log(`[DEBUG - data.js] 執行 getFolderContents，請求的 folderId: ${folderId}`);
     return new Promise((resolve, reject) => {
         const sqlFolders = `SELECT id, name, parent_id, 'folder' as type FROM folders WHERE parent_id = ? ORDER BY name ASC`;
-        const sqlFiles = `SELECT message_id as id, fileName as name, mimetype, date, 'file' as type FROM files WHERE folder_id = ? ORDER BY name ASC`;
+        // --- *** 關鍵修正 1：在 SQL 查詢中加入 thumb_file_id *** ---
+        const sqlFiles = `SELECT *, message_id as id, fileName as name, 'file' as type FROM files WHERE folder_id = ? ORDER BY name ASC`;
         let contents = { folders: [], files: [] };
         db.all(sqlFolders, [folderId], (err, folders) => {
-            if (err) {
-                console.error('[DEBUG - data.js] 查詢資料夾時發生錯誤:', err);
-                return reject(err);
-            }
-            console.log(`[DEBUG - data.js] 成功查詢到 ${folders.length} 個子資料夾。`);
+            if (err) return reject(err);
             contents.folders = folders;
             db.all(sqlFiles, [folderId], (err, files) => {
-                if (err) {
-                    console.error('[DEBUG - data.js] 查詢檔案時發生錯誤:', err);
-                    return reject(err);
-                }
-                console.log(`[DEBUG - data.js] 成功查詢到 ${files.length} 個檔案。`);
+                if (err) return reject(err);
                 contents.files = files.map(f => ({ ...f, message_id: f.id }));
                 resolve(contents);
             });
@@ -42,7 +33,25 @@ function getFolderContents(folderId = 1) {
     });
 }
 
-// ... (檔案中所有其他函式保持不變) ...
+// --- *** 新增：遞歸獲取資料夾內所有檔案的函式 *** ---
+async function getFilesRecursive(folderId, currentPath = '') {
+    let allFiles = [];
+    const sqlFiles = "SELECT * FROM files WHERE folder_id = ?";
+    const files = await new Promise((res, rej) => db.all(sqlFiles, [folderId], (err, rows) => err ? rej(err) : res(rows)));
+    for (const file of files) {
+        allFiles.push({ ...file, path: path.join(currentPath, file.fileName) });
+    }
+
+    const sqlFolders = "SELECT id, name FROM folders WHERE parent_id = ?";
+    const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [folderId], (err, rows) => err ? rej(err) : res(rows)));
+    for (const subFolder of subFolders) {
+        const nestedFiles = await getFilesRecursive(subFolder.id, path.join(currentPath, subFolder.name));
+        allFiles.push(...nestedFiles);
+    }
+    return allFiles;
+}
+
+
 function getFolderPath(folderId) {
     let path = [];
     return new Promise((resolve, reject) => {
@@ -219,4 +228,4 @@ function cancelShare(messageId) {
         });
     });
 }
-module.exports = { searchFiles, getFolderContents, getFolderPath, createFolder, getAllFolders, deleteFolderRecursive, addFile, getFilesByIds, moveItems, getFileByShareToken, createShareLink, getActiveSharedFiles, cancelShare, renameFile, deleteFilesByIds, };
+module.exports = { searchFiles, getFolderContents, getFilesRecursive, getFolderPath, createFolder, getAllFolders, deleteFolderRecursive, addFile, getFilesByIds, moveItems, getFileByShareToken, createShareLink, getActiveSharedFiles, cancelShare, renameFile, deleteFilesByIds, };
