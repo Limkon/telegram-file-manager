@@ -3,12 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
-    const selectionCountSpan = document.getElementById('selectionCount');
+    const selectionCountSpan = document.getElementById('selectionCountSpan');
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
-
-    // 操作按鈕
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
     const renameBtn = document.getElementById('renameBtn');
@@ -16,8 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
-
-    // 模態框
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -34,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let moveTargetFolderId = null;
     let isSearchMode = false;
 
-    // --- 核心功能：加載和渲染 ---
     const loadFolderContents = async (folderId) => {
         try {
             isSearchMode = false;
@@ -95,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         files.forEach(f => itemGrid.appendChild(createItemCard(f)));
     };
 
+    // --- *** 關鍵修正 1：顯示縮圖的邏輯 *** ---
     const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -103,9 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
         card.dataset.name = item.name;
 
         let iconHtml = '';
-        // --- *** 關鍵修正 1：優先顯示縮圖 *** ---
-        const fileInfo = currentFolderContents.files.find(f => f.id === item.id);
-        if (item.type === 'file' && fileInfo && fileInfo.thumb_file_id) {
+        // 為了獲取 thumb_file_id，我們需要從完整的檔案列表中找到對應的檔案
+        const fullFile = currentFolderContents.files.find(f => f.id === item.id);
+        
+        if (item.type === 'file' && fullFile && fullFile.thumb_file_id) {
             iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
         } else if (item.type === 'folder') {
             iconHtml = '<i class="fas fa-folder"></i>';
@@ -213,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (previewBtn) {
-        // --- *** 關鍵修正 2：重寫預覽邏輯 *** ---
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
             const messageId = selectedItems.keys().next().value;
@@ -263,18 +259,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (downloadBtn) {
+        // --- *** 關鍵修正 2：使用延遲下載，確保多檔案下載成功 *** ---
         downloadBtn.addEventListener('click', () => {
             if (downloadBtn.disabled) return;
+            
+            const filesToDownload = [];
             selectedItems.forEach((item, id) => {
                 if (item.type === 'file') {
-                    const link = document.createElement('a');
-                    link.href = `/download/proxy/${id}`;
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    filesToDownload.push(id);
                 }
             });
+
+            // 使用 setInterval 來逐一下載，避免瀏覽器攔截
+            let i = 0;
+            const downloadInterval = setInterval(() => {
+                if (i >= filesToDownload.length) {
+                    clearInterval(downloadInterval);
+                    return;
+                }
+                const link = document.createElement('a');
+                link.href = `/download/proxy/${filesToDownload[i]}`;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                i++;
+            }, 300); // 每 300 毫秒下載一個
         });
     }
     
@@ -318,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 tree.forEach(buildTree);
                 moveModal.style.display = 'flex';
-                // 重置狀態
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
             } catch { alert('無法獲取資料夾列表。'); }
@@ -326,16 +335,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (folderTree) {
-        // --- *** 關鍵修正 3：修正移動目標的選擇邏輯 *** ---
         folderTree.addEventListener('click', e => {
             const target = e.target.closest('.folder-item');
             if (!target) return;
-            
             const previouslySelected = folderTree.querySelector('.folder-item.selected');
-            if (previouslySelected) {
-                previouslySelected.classList.remove('selected');
-            }
-            
+            if (previouslySelected) previouslySelected.classList.remove('selected');
             target.classList.add('selected');
             moveTargetFolderId = parseInt(target.dataset.folderId);
             confirmMoveBtn.disabled = false;
@@ -363,17 +367,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const shareLinkContainer = document.getElementById('shareLinkContainer');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
         const closeShareModalBtn = document.getElementById('closeShareModalBtn');
-
         shareBtn.addEventListener('click', () => {
             if (shareBtn.disabled) return;
             shareOptions.style.display = 'block';
             shareResult.style.display = 'none';
             shareModal.style.display = 'flex';
         });
-
         cancelShareBtn.addEventListener('click', () => shareModal.style.display = 'none');
         closeShareModalBtn.addEventListener('click', () => shareModal.style.display = 'none');
-        
         confirmShareBtn.addEventListener('click', async () => {
             const messageId = selectedItems.keys().next().value;
             const expiresIn = expiresInSelect.value;
@@ -390,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('創建分享鏈接請求失敗');
             }
         });
-
         copyLinkBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(shareLinkContainer.textContent).then(() => {
                 copyLinkBtn.textContent = '已複製!';
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (closeModal) closeModal.onclick = () => {
         previewModal.style.display = 'none';
-        modalContent.innerHTML = ''; // 清空內容以停止影片播放
+        modalContent.innerHTML = '';
     };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
 
