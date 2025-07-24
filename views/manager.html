@@ -8,7 +8,18 @@
   <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/manager.css">
   <style>
+    /* 模態框通用樣式 */
     .modal { z-index: 1002; }
+    
+    /* 分享模態框樣式 */
+    .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
+    .share-modal-content h3 { margin-top: 0; }
+    .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
+    .share-modal-content .confirm-share { background-color: var(--primary-color); color: white; border: none; cursor: pointer; }
+    .share-modal-content .cancel-share { background-color: #6c757d; color: white; border: none; cursor: pointer; }
+    .share-link-container { margin-top: 20px; word-wrap: break-word; background-color: #f1f3f5; padding: 10px; border-radius: 5px; text-align: left; }
+
+    /* 移動模態框樣式 */
     .move-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; text-align: center; }
     .move-modal-content h3 { margin-top: 0; }
     #folderTree { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-top: 15px; }
@@ -19,7 +30,8 @@
     #confirmMoveBtn { background-color: var(--primary-color); color: white; }
     #cancelMoveBtn { background-color: #6c757d; color: white; }
     .create-folder-btn { background-color: #17a2b8; }
-    /* 新增搜尋框樣式 */
+    
+    /* 搜尋框樣式 */
     .search-form { position: relative; flex-grow: 1; max-width: 400px; }
     #searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
     .search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
@@ -52,6 +64,32 @@
     <div class="modal-content" id="modalContent"></div>
   </div>
   
+  <div id="shareModal" class="modal">
+    <div class="share-modal-content">
+        <h3 id="shareModalTitle">分享文件</h3>
+        <div id="shareOptions">
+            <p>請選擇分享鏈接的有效期：</p>
+            <select id="expiresInSelect">
+                <option value="1h">1 小時</option>
+                <option value="3h">3 小時</option>
+                <option value="5h">5 小時</option>
+                <option value="7h">7 小時</option>
+                <option value="24h" selected>24 小時</option>
+                <option value="7d">7 天</option>
+                <option value="0">永久有效</option>
+            </select>
+            <button id="confirmShareBtn" class="confirm-share">生成分享鏈接</button>
+            <button id="cancelShareBtn" class="cancel-share">取消</button>
+        </div>
+        <div id="shareResult" style="display: none;">
+            <p>分享鏈接已創建！</p>
+            <div id="shareLinkContainer" class="share-link-container"></div>
+            <button id="copyLinkBtn">複製鏈接</button>
+            <button id="closeShareModalBtn" class="cancel-share">關閉</button>
+        </div>
+    </div>
+  </div>
+
   <div id="moveModal" class="modal">
     <div class="move-modal-content">
         <h3>移動到...</h3>
@@ -66,6 +104,7 @@
     <button id="selectAllBtn" title="全選/取消全選"><i class="fas fa-check-double"></i></button>
     <span id="selectionCount">已選擇 0 個項目</span>
     <div class="actions">
+        <button id="previewBtn" title="預覽" disabled><i class="fas fa-eye"></i></button>
         <button id="moveBtn" title="移動" disabled><i class="fas fa-people-arrows"></i></button>
         <button id="shareBtn" title="分享" disabled><i class="fas fa-share-alt"></i></button>
         <button id="renameBtn" title="重命名" disabled><i class="fas fa-edit"></i></button>
