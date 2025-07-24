@@ -1,25 +1,101 @@
 const db = require('./database.js');
 const crypto = require('crypto');
 
-function addFile({ message_id, fileName, mimetype, file_id, thumb_file_id, date }) {
-    const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date)
-                 VALUES (?, ?, ?, ?, ?, ?)`;
+// --- 資料夾操作 ---
+
+/**
+ * 獲取指定資料夾的內容 (包含子資料夾和檔案)
+ * @param {number | null} folderId - 資料夾 ID，如果是根目錄則為 1
+ */
+function getFolderContents(folderId = 1) {
     return new Promise((resolve, reject) => {
-        db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date], function(err) {
+        const sqlFolders = `SELECT id, name, parent_id, 'folder' as type FROM folders WHERE parent_id = ? ORDER BY name ASC`;
+        const sqlFiles = `SELECT message_id as id, fileName as name, mimetype, date, 'file' as type FROM files WHERE folder_id = ? ORDER BY name ASC`;
+
+        let contents = { folders: [], files: [] };
+
+        db.all(sqlFolders, [folderId], (err, folders) => {
+            if (err) return reject(err);
+            contents.folders = folders;
+            
+            db.all(sqlFiles, [folderId], (err, files) => {
+                if (err) return reject(err);
+                contents.files = files.map(f => ({ ...f, message_id: f.id })); // 保持 message_id
+                resolve(contents);
+            });
+        });
+    });
+}
+
+/**
+ * 獲取資料夾的路徑 (麵包屑導航)
+ * @param {number} folderId - 目前資料夾的 ID
+ */
+function getFolderPath(folderId) {
+    let path = [];
+    return new Promise((resolve, reject) => {
+        function findParent(id) {
+            if (!id) {
+                return resolve(path.reverse());
+            }
+            const sql = "SELECT id, name, parent_id FROM folders WHERE id = ?";
+            db.get(sql, [id], (err, folder) => {
+                if (err) return reject(err);
+                if (folder) {
+                    path.push({ id: folder.id, name: folder.name });
+                    findParent(folder.parent_id);
+                } else {
+                    resolve(path.reverse());
+                }
+            });
+        }
+        findParent(folderId);
+    });
+}
+
+
+/**
+ * 建立一個新資料夾
+ * @param {string} name - 資料夾名稱
+ * @param {number} parentId - 父資料夾 ID
+ */
+function createFolder(name, parentId = 1) {
+    const sql = `INSERT INTO folders (name, parent_id) VALUES (?, ?)`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [name, parentId], function (err) {
+            if (err) {
+                // 'UNIQUE constraint failed' 錯誤通常是因為同名
+                if (err.message.includes('UNIQUE')) {
+                    return reject(new Error('同目錄下已存在同名資料夾。'));
+                }
+                return reject(err);
+            }
+            resolve({ success: true, id: this.lastID });
+        });
+    });
+}
+
+
+// --- 檔案操作 (已更新以支援資料夾) ---
+
+/**
+ * 新增一個檔案到指定資料夾
+ * @param {object} fileData - 檔案資料
+ * @param {number} folderId - 目標資料夾 ID
+ */
+function addFile(fileData, folderId = 1) {
+    const { message_id, fileName, mimetype, file_id, thumb_file_id, date } = fileData;
+    const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, folder_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, folderId], function(err) {
             if (err) reject(err);
             else resolve({ success: true, id: this.lastID });
         });
     });
 }
 
-function getAllFiles() {
-    return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM files ORDER BY date DESC", [], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-}
+// ... (其他檔案操作函式，如 getFilesByIds, getFileByShareToken, renameFile, createShareLink, deleteFilesByIds, getActiveSharedFiles, cancelShare 等保持不變，但請確認它們仍然在此檔案中)
 
 function getFilesByIds(messageIds) {
     const placeholders = messageIds.map(() => '?').join(',');
@@ -120,14 +196,21 @@ function cancelShare(messageId) {
     });
 }
 
-module.exports = { 
-    addFile, 
-    getAllFiles, 
-    getFilesByIds, 
-    getFileByShareToken, 
-    renameFile, 
-    createShareLink, 
-    deleteFilesByIds,
+
+module.exports = {
+    // 資料夾
+    getFolderContents,
+    getFolderPath,
+    createFolder,
+    // 檔案
+    addFile,
+    getFilesByIds,
+    // 分享
+    getFileByShareToken,
+    createShareLink,
     getActiveSharedFiles,
-    cancelShare
+    cancelShare,
+    // 其他
+    renameFile,
+    deleteFilesByIds,
 };
