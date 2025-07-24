@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
 
-// 引用新的模組
+// 引用資料庫和相關模組
 const db = require('./database.js'); 
 const data = require('./data.js');
 const { sendFile, deleteMessages, getFileLink } = require('./bot.js');
@@ -44,6 +44,7 @@ function requireLogin(req, res, next) {
 
 // --- 路由 ---
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'views/login.html')));
+
 app.post('/login', (req, res) => {
   if (req.body.username === process.env.ADMIN_USER && req.body.password === process.env.ADMIN_PASS) {
     req.session.loggedIn = true;
@@ -52,6 +53,7 @@ app.post('/login', (req, res) => {
     res.status(401).send('Invalid credentials');
   }
 });
+
 app.get('/', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
 app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
 
@@ -146,7 +148,7 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     try {
         const { messageIds } = req.body;
         if (!messageIds || !Array.isArray(messageIds)) return res.status(400).json({ success: false, message: '無效的 messageIds。' });
-        const result = await deleteMessages(messageIds); // This function now also handles DB deletion
+        const result = await deleteMessages(messageIds);
         res.json(result);
     } catch (error) {
         res.status(500).json({ success: false, message: '刪除失敗' });
@@ -200,6 +202,5 @@ app.get('/share/download/:token', async (req, res) => {
         res.status(500).send('下載失敗');
     }
 });
-
 
 app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
