@@ -1,7 +1,30 @@
 const db = require('./database.js');
 const crypto = require('crypto');
 
-// --- 資料夾操作 ---
+// --- 新增：搜尋檔案 ---
+/**
+ * 在所有檔案中搜尋符合關鍵字的檔案
+ * @param {string} query - 搜尋關鍵字
+ */
+function searchFiles(query) {
+    return new Promise((resolve, reject) => {
+        // 使用 LIKE 進行模糊搜尋，% 是萬用字元
+        const sql = `SELECT message_id as id, fileName as name, mimetype, date, 'file' as type 
+                     FROM files 
+                     WHERE name LIKE ? 
+                     ORDER BY date DESC`;
+        // 將查詢包裹在 % 之間，例如 'test' -> '%test%'
+        const searchQuery = `%${query}%`;
+        db.all(sql, [searchQuery], (err, files) => {
+            if (err) return reject(err);
+            // 為了與現有結構保持一致，回傳一個空的 folders 陣列
+            resolve({ folders: [], files: files.map(f => ({ ...f, message_id: f.id })) });
+        });
+    });
+}
+
+
+// --- 其他既有函式 ---
 
 function getFolderContents(folderId = 1) {
     return new Promise((resolve, reject) => {
@@ -52,10 +75,8 @@ function createFolder(name, parentId = 1) {
     });
 }
 
-// --- 新增：獲取所有資料夾列表（用於移動和上傳） ---
 function getAllFolders() {
     return new Promise((resolve, reject) => {
-        // 我們用 parent_id 和 name 來排序，以確保階層結構清晰
         const sql = "SELECT id, name, parent_id FROM folders ORDER BY parent_id, name ASC";
         db.all(sql, [], (err, rows) => {
             if (err) reject(err);
@@ -64,20 +85,14 @@ function getAllFolders() {
     });
 }
 
-
-// --- 檔案與資料夾的修改操作 ---
-
-// --- 新增：移動項目 ---
 function moveItems(itemIds, targetFolderId) {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
             const placeholders = itemIds.map(() => '?').join(',');
-            // 移動檔案
             const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${placeholders})`;
             db.run(moveFilesSql, [targetFolderId, ...itemIds], (err) => {
                 if(err) return reject(err);
             });
-            // 移動資料夾 - 注意：這裡假設 itemIds 不會同時包含檔案和資料夾
             const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${placeholders})`;
             db.run(moveFoldersSql, [targetFolderId, ...itemIds], (err) => {
                 if(err) return reject(err);
@@ -87,7 +102,6 @@ function moveItems(itemIds, targetFolderId) {
     });
 }
 
-// --- 新增：遞歸刪除資料夾 ---
 async function deleteFolderRecursive(folderId) {
     let filesToDelete = [];
     let foldersToDelete = [folderId];
@@ -108,18 +122,13 @@ async function deleteFolderRecursive(folderId) {
 
     await findContents(folderId);
 
-    // 從資料庫中刪除所有找到的資料夾
     const folderPlaceholders = foldersToDelete.map(() => '?').join(',');
     const deleteFoldersSql = `DELETE FROM folders WHERE id IN (${folderPlaceholders})`;
     await new Promise((res, rej) => db.run(deleteFoldersSql, foldersToDelete, (err) => err ? rej(err) : res()));
 
-    // 返回所有需要從 Telegram 刪除的檔案 message_id
-    // 檔案記錄會因為 `ON DELETE CASCADE` 而自動被 SQLite 刪除
     return filesToDelete;
 }
 
-
-// ... (其他檔案操作函式) ...
 function addFile(fileData, folderId = 1) {
     const { message_id, fileName, mimetype, file_id, thumb_file_id, date } = fileData;
     const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, folder_id)
@@ -231,25 +240,20 @@ function cancelShare(messageId) {
     });
 }
 
-
 module.exports = {
-    // 資料夾
+    searchFiles, // 匯出新函式
     getFolderContents,
     getFolderPath,
     createFolder,
     getAllFolders,
     deleteFolderRecursive,
-    // 檔案
     addFile,
     getFilesByIds,
-    // 移動
     moveItems,
-    // 分享
     getFileByShareToken,
     createShareLink,
     getActiveSharedFiles,
     cancelShare,
-    // 其他
     renameFile,
     deleteFilesByIds,
 };
