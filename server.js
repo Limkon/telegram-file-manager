@@ -40,9 +40,8 @@ function requireLogin(req, res, next) {
   res.redirect('/login');
 }
 
-// --- 路由 ---
+// --- 主要頁面路由 ---
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'views/login.html')));
-
 app.post('/login', (req, res) => {
   if (req.body.username === process.env.ADMIN_USER && req.body.password === process.env.ADMIN_PASS) {
     req.session.loggedIn = true;
@@ -51,9 +50,12 @@ app.post('/login', (req, res) => {
     res.status(401).send('Invalid credentials');
   }
 });
-
 app.get('/', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
 app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
+app.get('/shares-page', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/shares.html'));
+});
+
 
 // --- API 接口 ---
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
@@ -169,17 +171,55 @@ app.post('/share', requireLogin, async (req, res) => {
     }
 });
 
+app.get('/api/shared-files', requireLogin, async (req, res) => {
+    try {
+        const files = await data.getActiveSharedFiles();
+        const fullUrlFiles = files.map(file => ({
+            ...file,
+            share_url: `${req.protocol}://${req.get('host')}/share/view/${file.share_token}`
+        }));
+        res.json(fullUrlFiles);
+    } catch (error) {
+        res.status(500).json({ success: false, message: '獲取分享列表失敗' });
+    }
+});
+
+app.post('/api/cancel-share', requireLogin, async (req, res) => {
+    try {
+        const { messageId } = req.body;
+        if (!messageId) return res.status(400).json({ success: false, message: '缺少 messageId' });
+        const result = await data.cancelShare(parseInt(messageId, 10));
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ success: false, message: '取消分享失敗' });
+    }
+});
+
+
+// --- 公共分享路由 ---
 app.get('/share/view/:token', async (req, res) => {
     try {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
+        
         if (fileInfo) {
-            res.render('share-view', { file: fileInfo, downloadUrl: `/share/download/${token}` });
+            const downloadUrl = `/share/download/${token}`;
+            let textContent = null;
+
+            if (fileInfo.mimetype && fileInfo.mimetype.startsWith('text/')) {
+                const link = await getFileLink(fileInfo.file_id);
+                if (link) {
+                    const response = await axios.get(link, { responseType: 'text' });
+                    textContent = response.data;
+                }
+            }
+            
+            res.render('share-view', { file: fileInfo, downloadUrl, textContent });
         } else {
-            res.status(404).send('<h1>404 Not Found</h1><p>此分享鏈接無效或已過期。</p>');
+            res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
         }
     } catch (error) {
-        res.status(500).send('<h1>伺服器錯誤</h1><p>處理分享請求時發生錯誤。</p>');
+        res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' });
     }
 });
 
