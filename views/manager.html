@@ -8,22 +8,16 @@
   <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/manager.css">
   <style>
-    /* 模態框通用樣式 */
     .modal { z-index: 1002; }
-    
     .preview-modal-content { background: transparent; width: auto; max-width: 90vw; max-height: 90vh; }
     .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
     .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
-
-    /* 分享模態框樣式 */
     .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
     .share-modal-content h3 { margin-top: 0; }
     .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
     .share-modal-content .confirm-share { background-color: var(--primary-color); color: white; border: none; cursor: pointer; }
     .share-modal-content .cancel-share { background-color: #6c757d; color: white; border: none; cursor: pointer; }
     .share-link-container { margin-top: 20px; word-wrap: break-word; background-color: #f1f3f5; padding: 10px; border-radius: 5px; text-align: left; }
-
-    /* 移動模態框樣式 */
     .move-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; text-align: center; }
     .move-modal-content h3 { margin-top: 0; }
     #folderTree { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-top: 15px; }
@@ -34,21 +28,11 @@
     #confirmMoveBtn { background-color: var(--primary-color); color: white; }
     #cancelMoveBtn { background-color: #6c757d; color: white; }
     .create-folder-btn { background-color: #17a2b8; }
-    
     .search-form { position: relative; flex-grow: 1; max-width: 400px; }
     #searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
     .search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
-
     #multiSelectBtn.active { background-color: var(--primary-color); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary-color); }
-    
-    /* --- *** 新增：標題連結樣式 *** --- */
-    #homeLink {
-        text-decoration: none;
-        color: var(--text-color);
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-    }
+    #homeLink { text-decoration: none; color: var(--text-color); display: inline-flex; align-items: center; gap: 10px; }
   </style>
 </head>
 <body>
@@ -58,9 +42,9 @@
         <h1><i class="fas fa-home"></i> 文件管理器</h1>
       </a>
       <div style="display: flex; gap: 10px; align-items: center;">
-        <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i> 共享管理</a>
-        <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i> 建立新資料夾</button>
-        <a href="/upload-page" class="upload-link-btn"><i class="fas fa-upload"></i> 上傳新文件</a>
+        <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 共享管理</span></a>
+        <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立新資料夾</span></button>
+        <a href="/upload-page" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上傳新文件</span></a>
       </div>
     </header>
 
