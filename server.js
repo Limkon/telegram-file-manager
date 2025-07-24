@@ -66,7 +66,6 @@ app.get('/shares-page', requireLogin, (req, res) => {
 
 // --- API 接口 ---
 
-// --- 新增：搜尋 API ---
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
@@ -74,7 +73,6 @@ app.get('/api/search', requireLogin, async (req, res) => {
             return res.status(400).json({ success: false, message: '需要提供搜尋關鍵字。' });
         }
         const contents = await data.searchFiles(query);
-        // 搜尋結果沒有路徑，所以 path 是一個特殊狀態
         const path = [{ id: null, name: `搜尋結果: "${query}"` }];
         res.json({ contents, path });
     } catch (error) {
