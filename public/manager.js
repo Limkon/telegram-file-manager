@@ -3,10 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
-    const selectionCountSpan = document.getElementById('selectionCountSpan');
+    // --- *** 關鍵修正 1：使用正確的 ID 'selectionCount' *** ---
+    const selectionCountSpan = document.getElementById('selectionCount');
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
+
+    // 操作按鈕
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
     const renameBtn = document.getElementById('renameBtn');
@@ -14,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
+
+    // 模態框
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -90,18 +95,15 @@ document.addEventListener('DOMContentLoaded', () => {
         files.forEach(f => itemGrid.appendChild(createItemCard(f)));
     };
 
-    // --- *** 關鍵修正 1：顯示縮圖的邏輯 *** ---
     const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
         card.dataset.id = item.id;
         card.dataset.type = item.type;
         card.dataset.name = item.name;
-
-        let iconHtml = '';
-        // 為了獲取 thumb_file_id，我們需要從完整的檔案列表中找到對應的檔案
-        const fullFile = currentFolderContents.files.find(f => f.id === item.id);
         
+        const fullFile = currentFolderContents.files.find(f => f.id === item.id);
+        let iconHtml = '';
         if (item.type === 'file' && fullFile && fullFile.thumb_file_id) {
             iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
         } else if (item.type === 'folder') {
@@ -150,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = card.dataset.id;
             const type = card.dataset.type;
             const name = card.dataset.name;
-
             if (selectedItems.has(id)) {
                 selectedItems.delete(id);
                 card.classList.remove('selected');
@@ -215,10 +216,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const messageId = selectedItems.keys().next().value;
             const file = currentFolderContents.files.find(f => f.id == messageId);
             if (!file) return;
-
             previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
-            
             const downloadUrl = `/download/proxy/${messageId}`;
             if (file.mimetype && file.mimetype.startsWith('image/')) {
                 modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片預覽">`;
@@ -259,18 +258,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (downloadBtn) {
-        // --- *** 關鍵修正 2：使用延遲下載，確保多檔案下載成功 *** ---
         downloadBtn.addEventListener('click', () => {
             if (downloadBtn.disabled) return;
-            
             const filesToDownload = [];
             selectedItems.forEach((item, id) => {
-                if (item.type === 'file') {
-                    filesToDownload.push(id);
-                }
+                if (item.type === 'file') filesToDownload.push(id);
             });
-
-            // 使用 setInterval 來逐一下載，避免瀏覽器攔截
             let i = 0;
             const downloadInterval = setInterval(() => {
                 if (i >= filesToDownload.length) {
@@ -284,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 link.click();
                 document.body.removeChild(link);
                 i++;
-            }, 300); // 每 300 毫秒下載一個
+            }, 300);
         });
     }
     
@@ -396,6 +389,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 copyLinkBtn.textContent = '已複製!';
                 setTimeout(() => { copyLinkBtn.textContent = '複製鏈接'; }, 2000);
             });
+        });
+    }
+
+    // --- *** 關鍵修正 2：補回全選按鈕的事件監聽器 *** ---
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            const allVisibleItems = [...currentFolderContents.folders, ...currentFolderContents.files];
+            const allVisibleIds = allVisibleItems.map(item => String(item.id));
+            
+            // 如果目前所有可見項目都已被選中，則取消全選
+            const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedItems.has(id));
+
+            if (isAllSelected) {
+                selectedItems.clear();
+            } else {
+                allVisibleItems.forEach(item => {
+                    if (!selectedItems.has(String(item.id))) {
+                        selectedItems.set(String(item.id), { type: item.type, name: item.name });
+                    }
+                });
+            }
+            // 重新渲染以更新選中狀態
+            renderItems(currentFolderContents.folders, currentFolderContents.files);
+            updateActionBar();
         });
     }
 
