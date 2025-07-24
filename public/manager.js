@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM 元素
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
@@ -6,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
+    const multiSelectBtn = document.getElementById('multiSelectBtn');
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
     const renameBtn = document.getElementById('renameBtn');
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
     const shareModal = document.getElementById('shareModal');
 
+    // 狀態
+    let isMultiSelectMode = false;
     let currentFolderId = 1;
     let selectedItems = new Map();
     let currentFolderContents = { folders: [], files: [] };
@@ -123,15 +127,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!actionBar) return;
         const count = selectedItems.size;
         selectionCountSpan.textContent = `已選擇 ${count} 個項目`;
-        if (downloadBtn) downloadBtn.disabled = count === 0; // 任何選中項都可以觸發下載
+        if (downloadBtn) downloadBtn.disabled = count === 0;
         if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
         if (shareBtn) shareBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
         actionBar.classList.toggle('visible', count > 0);
+        if (!isMultiSelectMode && multiSelectBtn) {
+            multiSelectBtn.classList.remove('active');
+        }
+    };
+    
+    const rerenderSelection = () => {
+        document.querySelectorAll('.item-card').forEach(card => {
+            card.classList.toggle('selected', selectedItems.has(card.dataset.id));
+        });
     };
 
+    // --- 事件監聽 ---
     if (itemGrid) {
         itemGrid.addEventListener('click', e => {
             const card = e.target.closest('.item-card');
@@ -139,13 +153,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = card.dataset.id;
             const type = card.dataset.type;
             const name = card.dataset.name;
-            if (selectedItems.has(id)) {
-                selectedItems.delete(id);
-                card.classList.remove('selected');
+            
+            if (isMultiSelectMode) {
+                if (selectedItems.has(id)) {
+                    selectedItems.delete(id);
+                } else {
+                    selectedItems.set(id, { type, name });
+                }
             } else {
-                selectedItems.set(id, { type, name });
-                card.classList.add('selected');
+                const isAlreadySelected = selectedItems.has(id);
+                selectedItems.clear();
+                if (!isAlreadySelected) {
+                    selectedItems.set(id, { type, name });
+                }
             }
+            rerenderSelection();
             updateActionBar();
         });
         itemGrid.addEventListener('dblclick', e => {
@@ -189,6 +211,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const query = searchInput.value.trim();
             if (query) executeSearch(query);
             else loadFolderContents(currentFolderId);
+        });
+    }
+    if (multiSelectBtn) {
+        multiSelectBtn.addEventListener('click', () => {
+            isMultiSelectMode = !isMultiSelectMode;
+            multiSelectBtn.classList.toggle('active', isMultiSelectMode);
+            if (!isMultiSelectMode && selectedItems.size > 1) {
+                const lastItem = Array.from(selectedItems.entries()).pop();
+                selectedItems.clear();
+                selectedItems.set(lastItem[0], lastItem[1]);
+                rerenderSelection();
+                updateActionBar();
+            }
+        });
+    }
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            isMultiSelectMode = true;
+            multiSelectBtn.classList.add('active');
+            const allVisibleItems = [...currentFolderContents.folders, ...currentFolderContents.files];
+            const allVisibleIds = allVisibleItems.map(item => String(item.id));
+            const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedItems.has(id));
+            if (isAllSelected) {
+                selectedItems.clear();
+            } else {
+                allVisibleItems.forEach(item => {
+                    selectedItems.set(String(item.id), { type: item.type, name: item.name });
+                });
+            }
+            rerenderSelection();
+            updateActionBar();
         });
     }
     if (previewBtn) {
@@ -236,42 +289,26 @@ document.addEventListener('DOMContentLoaded', () => {
              }
         });
     }
-    
-    // --- *** 關鍵修正：全新的下載邏輯 *** ---
     if (downloadBtn) {
         downloadBtn.addEventListener('click', async () => {
             if (downloadBtn.disabled) return;
-            
             const messageIds = [];
             const folderIds = [];
             selectedItems.forEach((item, id) => {
-                if (item.type === 'file') {
-                    messageIds.push(parseInt(id));
-                } else {
-                    folderIds.push(parseInt(id));
-                }
+                if (item.type === 'file') messageIds.push(parseInt(id));
+                else folderIds.push(parseInt(id));
             });
-
             if (messageIds.length === 0 && folderIds.length === 0) return;
-            
-            // 如果只有一個檔案，則直接下載
             if (messageIds.length === 1 && folderIds.length === 0) {
                 window.location.href = `/download/proxy/${messageIds[0]}`;
                 return;
             }
-
             try {
-                const response = await axios.post('/api/download-archive', {
-                    messageIds,
-                    folderIds
-                }, {
-                    responseType: 'blob'
-                });
-
+                const response = await axios.post('/api/download-archive', { messageIds, folderIds }, { responseType: 'blob' });
                 const url = window.URL.createObjectURL(new Blob([response.data]));
                 const link = document.createElement('a');
                 link.href = url;
-                const timestamp = new Date().getTime();
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 link.setAttribute('download', `download-${timestamp}.zip`);
                 document.body.appendChild(link);
                 link.click();
@@ -282,7 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
     if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
@@ -387,24 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 copyLinkBtn.textContent = '已複製!';
                 setTimeout(() => { copyLinkBtn.textContent = '複製鏈接'; }, 2000);
             });
-        });
-    }
-    if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', () => {
-            const allVisibleItems = [...currentFolderContents.folders, ...currentFolderContents.files];
-            const allVisibleIds = allVisibleItems.map(item => String(item.id));
-            const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedItems.has(id));
-            if (isAllSelected) {
-                selectedItems.clear();
-            } else {
-                allVisibleItems.forEach(item => {
-                    if (!selectedItems.has(String(item.id))) {
-                        selectedItems.set(String(item.id), { type: item.type, name: item.name });
-                    }
-                });
-            }
-            renderItems(currentFolderContents.folders, currentFolderContents.files);
-            updateActionBar();
         });
     }
     if (closeModal) closeModal.onclick = () => {
