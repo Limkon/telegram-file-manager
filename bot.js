@@ -5,7 +5,8 @@ const data = require('./data.js');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
-async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
+// *** 關鍵修改：函式簽名加入了 folderId ***
+async function sendFile(fileBuffer, fileName, mimetype, caption = '', folderId = 1) {
   try {
     const formData = new FormData();
     formData.append('chat_id', process.env.CHANNEL_ID);
@@ -19,6 +20,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
         const fileData = result.document || result.video || result.audio || result.photo;
 
         if (fileData && fileData.file_id) {
+            // *** 關鍵修改：將 folderId 傳遞給資料庫 ***
             await data.addFile({
               fileName,
               mimetype: fileData.mime_type || mimetype,
@@ -26,7 +28,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
               file_id: fileData.file_id,
               thumb_file_id: fileData.thumb ? fileData.thumb.file_id : null,
               date: Date.now(),
-            });
+            }, folderId);
             return { success: true, data: res.data };
         }
     }
@@ -68,6 +70,7 @@ async function deleteMessages(messageIds) {
     
     return results;
 }
+
 
 async function getFileLink(file_id) {
   if (!file_id || typeof file_id !== 'string') return null;
