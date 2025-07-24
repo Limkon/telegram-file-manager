@@ -1,7 +1,7 @@
 require('dotenv').config();
 const axios = require('axios');
 const FormData = require('form-data');
-const data = require('./data.js'); // 引用新的数据层
+const data = require('./data.js');
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
@@ -19,7 +19,6 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
         const fileData = result.document || result.video || result.audio || result.photo;
 
         if (fileData && fileData.file_id) {
-            // 将文件信息存入数据库
             await data.addFile({
               fileName,
               mimetype: fileData.mime_type || mimetype,
@@ -63,14 +62,12 @@ async function deleteMessages(messageIds) {
         }
     }
 
-    // 从数据库中删除已成功删除的消息记录
     if (results.success.length > 0) {
         await data.deleteFilesByIds(results.success);
     }
     
     return results;
 }
-
 
 async function getFileLink(file_id) {
   if (!file_id || typeof file_id !== 'string') return null;
