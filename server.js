@@ -5,7 +5,6 @@ const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
-// 从 bot.js 导入新增的函数
 const { sendFile, loadMessages, getFileLink, renameFileInDb, deleteMessages, createShareLink, getSharedFile } = require('./bot.js');
 
 const app = express();
@@ -19,7 +18,6 @@ app.use(session({
   saveUninitialized: false,
 }));
 
-// 设置 EJS 为模板引擎，用于渲染分享页面
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -132,7 +130,7 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     res.json(result);
 });
 
-// --- 新增分享 API (需要登录) ---
+// --- 分享 API (需要登录) ---
 app.post('/share', requireLogin, async (req, res) => {
     const { messageId, expiresIn } = req.body;
     if (!messageId || !expiresIn) {
@@ -140,7 +138,6 @@ app.post('/share', requireLogin, async (req, res) => {
     }
     const result = await createShareLink(parseInt(messageId, 10), expiresIn);
     if (result.success) {
-        // 构建完整的分享链接
         const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${result.token}`;
         res.json({ success: true, url: shareUrl });
     } else {
@@ -149,14 +146,13 @@ app.post('/share', requireLogin, async (req, res) => {
 });
 
 
-// --- 新增公共分享路由 (无需登录) ---
+// --- 公共分享路由 (无需登录) ---
 
 // 分享文件查看页面
 app.get('/share/view/:token', async (req, res) => {
     const token = req.params.token;
     const fileInfo = await getSharedFile(token);
     if (fileInfo) {
-        // 渲染一个简单的页面来显示文件信息和下载按钮
         res.render('share-view', { file: fileInfo, downloadUrl: `/share/download/${token}` });
     } else {
         res.status(404).send('<h1>404 Not Found</h1><p>此分享鏈接無效或已過期。</p>');
