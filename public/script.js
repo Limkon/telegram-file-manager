@@ -4,11 +4,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const folderSelect = document.getElementById('folderSelect');
     const uploadForm = document.getElementById('uploadForm');
 
-    // --- *** 關鍵修正 1：定義檔案大小限制 *** ---
-    const MAX_SERVER_SIZE = 50 * 1024 * 1024; // 1 GB (與 server.js 中 multer 的設定保持一致)
-    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB (Telegram Bot API 的實際限制)
+    const MAX_SERVER_SIZE = 1000 * 1024 * 1024; // 1 GB
+    const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024; // 50 MB
 
-    // --- 加載資料夾列表 ---
+    // --- *** 關鍵修正 1：新增一個輔助函式來格式化檔案大小 *** ---
+    const formatBytes = (bytes, decimals = 2) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+
     const loadFolders = async () => {
         try {
             const res = await axios.get('/api/folders');
@@ -50,7 +58,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadFolders();
     }
 
-    // --- 事件監聽 ---
     if (fileInput) {
         fileInput.addEventListener('change', () => {
             fileListContainer.innerHTML = '';
@@ -74,15 +81,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // --- *** 關鍵修正 2：在提交時預先檢查檔案大小 *** ---
             for (const file of fileInput.files) {
+                // --- *** 關鍵修正 2：使用輔助函式來動態生成提示訊息 *** ---
                 if (file.size > MAX_SERVER_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過伺服器 50 MB 的限制。`, 'error');
-                    return; // 拒絕上傳
+                    showNotification(`檔案 "${file.name}" 過大，超過伺服器 ${formatBytes(MAX_SERVER_SIZE)} 的限制。`, 'error');
+                    return;
                 }
                 if (file.size > MAX_TELEGRAM_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過 Telegram 50 MB 的限制。`, 'error');
-                    return; // 拒絕上傳
+                    showNotification(`檔案 "${file.name}" 過大，超過 Telegram ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error');
+                    return;
                 }
             }
             
