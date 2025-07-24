@@ -4,6 +4,7 @@ const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
+const archiver = require('archiver'); // 引入新安裝的套件
 
 const data = require('./data.js');
 const { sendFile, deleteMessages, getFileLink } = require('./bot.js');
@@ -21,11 +22,11 @@ app.use(session({
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// ... (fixFileNameEncoding 和 requireLogin 函式保持不變) ...
 const fixFileNameEncoding = (req, res, next) => {
     if (req.files) {
         req.files.forEach(file => {
@@ -34,7 +35,6 @@ const fixFileNameEncoding = (req, res, next) => {
     }
     next();
 };
-
 function requireLogin(req, res, next) {
   if (req.session.loggedIn) return next();
   res.redirect('/login');
@@ -50,39 +50,65 @@ app.post('/login', (req, res) => {
     res.status(401).send('Invalid credentials');
   }
 });
-app.get('/', requireLogin, (req, res) => {
-    res.redirect('/folder/1');
-});
-app.get('/folder/:id', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/manager.html'));
-});
-app.get('/upload-page', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/dashboard.html'));
-});
-app.get('/shares-page', requireLogin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'views/shares.html'));
-});
+app.get('/', requireLogin, (req, res) => res.redirect('/folder/1'));
+app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
+app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
+app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
 // --- API 接口 ---
-app.get('/api/search', requireLogin, async (req, res) => {
+
+// --- *** 新增：多檔案 ZIP 下載 API *** ---
+app.post('/api/download-archive', requireLogin, async (req, res) => {
     try {
-        const query = req.query.q;
-        if (!query) {
-            return res.status(400).json({ success: false, message: '需要提供搜尋關鍵字。' });
+        const { messageIds } = req.body;
+        if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+            return res.status(400).send('未提供檔案 ID');
         }
-        const contents = await data.searchFiles(query);
-        const path = [{ id: null, name: `搜尋結果: "${query}"` }];
-        res.json({ contents, path });
+
+        const files = await data.getFilesByIds(messageIds);
+        if (files.length === 0) {
+            return res.status(404).send('找不到任何檔案');
+        }
+
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // 設定壓縮等級
+        });
+
+        // 設定回應標頭，讓瀏覽器知道這是一個 zip 檔案
+        res.attachment('download.zip');
+        archive.pipe(res);
+
+        for (const file of files) {
+            const link = await getFileLink(file.file_id);
+            if (link) {
+                // 從 Telegram 串流下載檔案
+                const response = await axios({ url: link, method: 'GET', responseType: 'stream' });
+                // 將檔案串流加入到 ZIP 檔案中
+                archive.append(response.data, { name: file.fileName });
+            }
+        }
+        
+        await archive.finalize();
+
     } catch (error) {
-        res.status(500).json({ success: false, message: '搜尋失敗。' });
+        res.status(500).send('壓縮檔案時發生錯誤');
     }
 });
 
+
+// ... (其他 API 路由保持不變) ...
+app.get('/api/search', requireLogin, async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query) return res.status(400).json({ success: false, message: '需要提供搜尋關鍵字。' });
+        const contents = await data.searchFiles(query);
+        const path = [{ id: null, name: `搜尋結果: "${query}"` }];
+        res.json({ contents, path });
+    } catch (error) { res.status(500).json({ success: false, message: '搜尋失敗。' }); }
+});
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
-    if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ success: false, message: '沒有選擇文件' });
-    }
+    if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
     const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
     const results = [];
     for (const file of req.files) {
@@ -91,95 +117,62 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     }
     res.json({ success: true, results });
 });
-
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
         const folderId = parseInt(req.params.id, 10);
         const contents = await data.getFolderContents(folderId);
         const path = await data.getFolderPath(folderId);
         res.json({ contents, path });
-    } catch (error) {
-        res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' }); }
 });
-
 app.post('/api/folder', requireLogin, async (req, res) => {
     try {
         const { name, parentId } = req.body;
-        if (!name || !parentId) {
-            return res.status(400).json({ success: false, message: '缺少資料夾名稱或父 ID。' });
-        }
+        if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少資料夾名稱或父 ID。' });
         const result = await data.createFolder(name, parentId);
         res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' }); }
 });
-
 app.get('/api/folders', requireLogin, async (req, res) => {
     try {
         const folders = await data.getAllFolders();
         res.json(folders);
-    } catch (error) {
-        res.status(500).json({ success: false, message: '獲取資料夾列表失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '獲取資料夾列表失敗' }); }
 });
-
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId } = req.body;
-        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) {
-            return res.status(400).json({ success: false, message: '無效的請求參數。' });
-        }
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) return res.status(400).json({ success: false, message: '無效的請求參數。' });
         await data.moveItems(itemIds, targetFolderId);
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, message: '移動失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '移動失敗' }); }
 });
-
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     try {
         const { folderId } = req.body;
-        if (!folderId || folderId === 1) {
-            return res.status(400).json({ success: false, message: '無效的資料夾 ID 或試圖刪除根目錄。' });
-        }
+        if (!folderId || folderId === 1) return res.status(400).json({ success: false, message: '無效的資料夾 ID 或試圖刪除根目錄。' });
         const messageIdsToDelete = await data.deleteFolderRecursive(folderId);
-        if (messageIdsToDelete.length > 0) {
-            await deleteMessages(messageIdsToDelete);
-        }
+        if (messageIdsToDelete.length > 0) await deleteMessages(messageIdsToDelete);
         res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, message: '刪除資料夾失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '刪除資料夾失敗' }); }
 });
-
-// --- *** 這是修正縮圖問題的關鍵後端路由 *** ---
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
-        // 使用 data.js 從 SQLite 獲取檔案資訊
         const [fileInfo] = await data.getFilesByIds([messageId]);
-
         if (fileInfo && fileInfo.thumb_file_id) {
             const link = await getFileLink(fileInfo.thumb_file_id);
             if (link) return res.redirect(link);
         }
-        
         const placeholder = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
         res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': placeholder.length });
         res.end(placeholder);
-
-    } catch (error) {
-        res.status(500).send('獲取縮圖失敗');
-    }
+    } catch (error) { res.status(500).send('獲取縮圖失敗'); }
 });
-
 app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
         const [fileInfo] = await data.getFilesByIds([messageId]);
-
         if (fileInfo && fileInfo.file_id) {
             const link = await getFileLink(fileInfo.file_id);
             if (link) {
@@ -188,11 +181,8 @@ app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
                 response.data.pipe(res);
             } else { res.status(404).send('無法獲取文件鏈接'); }
         } else { res.status(404).send('文件信息未找到'); }
-    } catch (error) {
-        res.status(500).send('下載代理失敗');
-    }
+    } catch (error) { res.status(500).send('下載代理失敗'); }
 });
-
 app.get('/file/content/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -205,33 +195,24 @@ app.get('/file/content/:message_id', requireLogin, async (req, res) => {
                 res.send(response.data);
             } else { res.status(404).json({ success: false, message: '無法獲取文件鏈接。' }); }
         } else { res.status(404).json({ success: false, message: '文件未找到。' }); }
-    } catch (error) {
-        res.status(500).json({ success: false, message: '無法獲取文件內容。' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '無法獲取文件內容。' }); }
 });
-
 app.post('/rename', requireLogin, async (req, res) => {
     try {
         const { messageId, newFileName } = req.body;
         if (!messageId || !newFileName) return res.status(400).json({ success: false, message: '缺少必要參數。'});
         const result = await data.renameFile(parseInt(messageId, 10), newFileName);
         res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: '重命名失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '重命名失敗' }); }
 });
-
 app.post('/delete-multiple', requireLogin, async (req, res) => {
     try {
         const { messageIds } = req.body;
         if (!messageIds || !Array.isArray(messageIds)) return res.status(400).json({ success: false, message: '無效的 messageIds。' });
         const result = await deleteMessages(messageIds);
         res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: '刪除失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '刪除失敗' }); }
 });
-
 app.post('/share', requireLogin, async (req, res) => {
     try {
         const { messageId, expiresIn } = req.body;
@@ -243,11 +224,8 @@ app.post('/share', requireLogin, async (req, res) => {
         } else {
             res.status(500).json(result);
         }
-    } catch (error) {
-        res.status(500).json({ success: false, message: '創建分享鏈接失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '創建分享鏈接失敗' }); }
 });
-
 app.get('/api/shared-files', requireLogin, async (req, res) => {
     try {
         const files = await data.getActiveSharedFiles();
@@ -256,27 +234,20 @@ app.get('/api/shared-files', requireLogin, async (req, res) => {
             share_url: `${req.protocol}://${req.get('host')}/share/view/${file.share_token}`
         }));
         res.json(fullUrlFiles);
-    } catch (error) {
-        res.status(500).json({ success: false, message: '獲取分享列表失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '獲取分享列表失敗' }); }
 });
-
 app.post('/api/cancel-share', requireLogin, async (req, res) => {
     try {
         const { messageId } = req.body;
         if (!messageId) return res.status(400).json({ success: false, message: '缺少 messageId' });
         const result = await data.cancelShare(parseInt(messageId, 10));
         res.json(result);
-    } catch (error) {
-        res.status(500).json({ success: false, message: '取消分享失敗' });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: '取消分享失敗' }); }
 });
-
 app.get('/share/view/:token', async (req, res) => {
     try {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
-        
         if (fileInfo) {
             const downloadUrl = `/share/download/${token}`;
             let textContent = null;
@@ -291,11 +262,8 @@ app.get('/share/view/:token', async (req, res) => {
         } else {
             res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
         }
-    } catch (error) {
-        res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' });
-    }
+    } catch (error) { res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' }); }
 });
-
 app.get('/share/download/:token', async (req, res) => {
     try {
         const token = req.params.token;
@@ -308,9 +276,7 @@ app.get('/share/download/:token', async (req, res) => {
                 response.data.pipe(res);
             } else { res.status(404).send('無法獲取文件鏈接'); }
         } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
-    } catch (error) {
-        res.status(500).send('下載失敗');
-    }
+    } catch (error) { res.status(500).send('下載失敗'); }
 });
 
 
