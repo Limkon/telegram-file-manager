@@ -37,6 +37,7 @@ body {
   gap: 8px;
   border: none;
   cursor: pointer;
+  font-size: 16px; /* 明確定義基礎字體大小 */
 }
 .upload-link-btn:hover {
   background-color: #0069d9;
@@ -149,40 +150,41 @@ body {
 .close-button { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
 
 
-/* --- *** 新增：手機端優化 (當螢幕寬度小於 768px 時生效) *** --- */
+/* --- 手機端優化 (當螢幕寬度小於 768px 時生效) --- */
 @media (max-width: 768px) {
     body {
-        padding: 10px; /* 縮小頁邊距 */
+        padding: 10px;
     }
 
     .main-header {
-        flex-direction: column; /* 標題和按鈕垂直排列 */
+        flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
 
     .main-header h1 {
-        font-size: 24px; /* 縮小標題字體 */
+        font-size: 24px;
     }
 
-    .upload-link-btn {
-        padding: 8px 12px; /* 縮小按鈕 */
-        font-size: 14px;
+    /* --- *** 關鍵修正：使用更明確的選擇器並縮小尺寸 *** --- */
+    .main-header .upload-link-btn {
+        padding: 8px 10px;
+        font-size: 13px;
+        gap: 6px;
     }
     
     .breadcrumb {
-        font-size: 14px; /* 縮小麵包屑字體 */
+        font-size: 14px;
         padding: 8px 10px;
     }
 
-    /* 讓網格每行顯示更多、更小的卡片 */
     .item-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 15px;
     }
     
     .item-icon {
-        font-size: 48px; /* 縮小圖示 */
+        font-size: 48px;
     }
 
     .item-info {
@@ -190,19 +192,18 @@ body {
     }
 
     .item-info h5 {
-        font-size: 12px; /* 縮小卡片中的檔名 */
+        font-size: 12px;
     }
 
-    /* 優化浮動操作欄 */
     .action-bar {
         padding: 10px;
         width: 95%;
-        bottom: -120px; /* 調整初始位置 */
+        bottom: -120px;
     }
      .action-bar.visible { bottom: 10px; }
 
     .action-bar #selectionCount {
-        font-size: 12px; /* 縮小計數文字 */
+        font-size: 12px;
     }
     
     .action-bar .actions button {
@@ -210,8 +211,8 @@ body {
         margin-left: 5px;
         font-size: 12px;
     }
-    /* 在手機上，只顯示圖示，隱藏文字標籤以節省空間 */
-    .action-bar .actions button .button-text {
+    .action-bar .actions button .button-text,
+    .main-header .upload-link-btn .button-text {
         display: none;
     }
 }
