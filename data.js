@@ -99,4 +99,35 @@ function deleteFilesByIds(messageIds) {
     });
 }
 
-module.exports = { addFile, getAllFiles, getFilesByIds, getFileByShareToken, renameFile, createShareLink, deleteFilesByIds };
+function getActiveSharedFiles() {
+    const sql = "SELECT * FROM files WHERE share_token IS NOT NULL AND (share_expires_at IS NULL OR share_expires_at > ?)";
+    return new Promise((resolve, reject) => {
+        db.all(sql, [Date.now()], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+}
+
+function cancelShare(messageId) {
+    const sql = `UPDATE files SET share_token = NULL, share_expires_at = NULL WHERE message_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [messageId], function(err) {
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '文件未找到或無需取消' });
+            else resolve({ success: true });
+        });
+    });
+}
+
+module.exports = { 
+    addFile, 
+    getAllFiles, 
+    getFilesByIds, 
+    getFileByShareToken, 
+    renameFile, 
+    createShareLink, 
+    deleteFilesByIds,
+    getActiveSharedFiles,
+    cancelShare
+};
