@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/manager.css">
   <style>
-    /* 新增分享模态框样式 */
+    /* 分享模态框样式 */
     .share-modal {
         display: none;
         position: fixed;
-        z-index: 1002; /* 比预览模态框更高 */
+        z-index: 1002;
         left: 0;
         top: 0;
         width: 100%;
@@ -65,7 +65,10 @@
   <div class="container">
     <header class="main-header">
       <h1>文件管理器</h1>
-      <a href="/upload-page" class="upload-link-btn"><i class="fas fa-upload"></i> 上傳新文件</a>
+      <div style="display: flex; gap: 10px;">
+        <a href="/shares-page" class="upload-link-btn" style="background-color: #6c757d;"><i class="fas fa-share-alt"></i> 共享管理</a>
+        <a href="/upload-page" class="upload-link-btn"><i class="fas fa-upload"></i> 上傳新文件</a>
+      </div>
     </header>
     <div class="controls">
       <div class="search-bar">
@@ -88,6 +91,7 @@
     <span class="close-button">&times;</span>
     <div class="modal-content" id="modalContent"></div>
   </div>
+  
   <div id="shareModal" class="share-modal">
     <div class="share-modal-content">
         <h3 id="shareModalTitle">分享文件</h3>
