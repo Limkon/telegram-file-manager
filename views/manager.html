@@ -11,11 +11,27 @@
     /* 模態框通用樣式 */
     .modal { z-index: 1002; }
     
-    .preview-modal-content { background: transparent; width: auto; max-width: 90vw; max-height: 90vh; }
-    .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
-    .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
+    /* --- *** 修改部分 開始 *** --- */
+    .preview-modal-content { 
+        background: #ffffff; /* 將背景改為白色 */
+        width: auto; 
+        max-width: 90vw; 
+        max-height: 90vh; 
+        padding: 20px; 
+        box-sizing: border-box; 
+        border-radius: 8px;
+    }
+    .modal .close-button {
+        color: #333; /* 關閉按鈕改為深色 */
+        top: 25px;
+        right: 45px;
+    }
+    /* --- *** 修改部分 結束 *** --- */
+    
+    .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 85vh; display: block; object-fit: contain; }
+    .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 85vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
     .no-preview {
-        color: #f1f1f1; /* 將文字顏色改為淺色 */
+        color: #343a40; /* 提示文字改為深色 */
         text-align: center;
     }
     .no-preview i {
