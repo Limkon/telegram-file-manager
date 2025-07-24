@@ -8,19 +8,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
 
-    // 按鈕
+    // 操作按鈕
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
     const renameBtn = document.getElementById('renameBtn');
     const moveBtn = document.getElementById('moveBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
+    const selectAllBtn = document.getElementById('selectAllBtn');
 
-    // 移動模態框
+    // 模態框
+    const previewModal = document.getElementById('previewModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModal = document.querySelector('.close-button');
     const moveModal = document.getElementById('moveModal');
     const folderTree = document.getElementById('folderTree');
     const confirmMoveBtn = document.getElementById('confirmMoveBtn');
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
+    const shareModal = document.getElementById('shareModal');
 
     // 狀態
     let currentFolderId = 1;
@@ -43,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         } catch (error) {
-            console.error('[DEBUG] 加載內容時捕獲到錯誤:', error);
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
@@ -113,28 +117,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'fa-file-alt';
     };
     
-    // --- *** 關鍵修正：在 updateActionBar 中加入 null 檢查 *** ---
     const updateActionBar = () => {
-        // 如果操作欄不存在於當前頁面，則直接返回
         if (!actionBar) return;
-
         const count = selectedItems.size;
         selectionCountSpan.textContent = `已選擇 ${count} 個項目`;
         let filesCount = 0, foldersCount = 0;
         selectedItems.forEach(item => item.type === 'file' ? filesCount++ : foldersCount++);
         
-        // 在設定 disabled 屬性前，先檢查按鈕是否存在
         if (previewBtn) previewBtn.disabled = count !== 1 || foldersCount === 1;
         if (shareBtn) shareBtn.disabled = count !== 1 || foldersCount === 1;
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
-        if (downloadBtn) downloadBtn.disabled = filesCount === 0 || foldersCount > 0;
+        if (downloadBtn) downloadBtn.disabled = filesCount === 0;
         if (deleteBtn) deleteBtn.disabled = count === 0;
         
         actionBar.classList.toggle('visible', count > 0);
     };
 
-    // --- 事件監聽 ---
+    // --- 事件監聽 (主管理器頁面) ---
     if (itemGrid) {
         itemGrid.addEventListener('click', e => {
             const card = e.target.closest('.item-card');
@@ -171,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     window.addEventListener('popstate', () => {
-        // 確保只有在 manager 頁面才執行
         if (document.getElementById('itemGrid')) {
             const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
             loadFolderContents(folderId);
@@ -194,11 +193,57 @@ document.addEventListener('DOMContentLoaded', () => {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const query = searchInput.value.trim();
-            if (query) {
-                executeSearch(query);
-            } else {
-                loadFolderContents(currentFolderId);
+            if (query) executeSearch(query);
+            else loadFolderContents(currentFolderId);
+        });
+    }
+    
+    // --- *** 補回所有操作按鈕的事件監聽器 *** ---
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', async () => {
+            if (previewBtn.disabled) return;
+            const messageId = selectedItems.keys().next().value;
+            previewModal.style.display = 'flex';
+            modalContent.innerHTML = '正在加載預覽...';
+            try {
+                const res = await axios.get(`/file/content/${messageId}`);
+                modalContent.innerHTML = `<pre>${res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
+            } catch {
+                modalContent.innerHTML = '此檔案類型不支持文字預覽，請下載後查看。';
             }
+        });
+    }
+    
+    if (renameBtn) {
+        renameBtn.addEventListener('click', async () => {
+             if (renameBtn.disabled) return;
+             const [id, item] = selectedItems.entries().next().value;
+             const newName = prompt('請輸入新的名稱:', item.name);
+             if (newName && newName.trim() && newName !== item.name) {
+                 try {
+                     // 這裡需要後端支持重命名資料夾
+                     if (item.type === 'file') {
+                        await axios.post('/rename', { messageId: id, newFileName: newName.trim() });
+                     } else {
+                         alert('暫不支援重命名資料夾。');
+                     }
+                     isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
+                 } catch (error) {
+                     alert('重命名失敗');
+                 }
+             }
+        });
+    }
+    
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            if (downloadBtn.disabled) return;
+            selectedItems.forEach((item, id) => {
+                if (item.type === 'file') {
+                    window.location.href = `/download/proxy/${id}`;
+                }
+            });
         });
     }
     
@@ -246,19 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    if (folderTree) {
-        folderTree.addEventListener('click', e => {
-            const target = e.target.closest('.folder-item');
-            if (!target) return;
-            document.querySelectorAll('#folderTree .folder-item').forEach(el => el.classList.remove('selected'));
-            target.classList.add('selected');
-            moveTargetFolderId = parseInt(target.dataset.folderId);
-            confirmMoveBtn.disabled = false;
-        });
-    }
-    
-    if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
-    
     if (confirmMoveBtn) {
         confirmMoveBtn.addEventListener('click', async () => {
             if (!moveTargetFolderId) return;
@@ -270,8 +302,59 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert('移動失敗'); }
         });
     }
+    
+    // --- 分享功能邏輯 ---
+    if (shareBtn && shareModal) {
+        const shareModalTitle = document.getElementById('shareModalTitle');
+        const shareOptions = document.getElementById('shareOptions');
+        const shareResult = document.getElementById('shareResult');
+        const expiresInSelect = document.getElementById('expiresInSelect');
+        const confirmShareBtn = document.getElementById('confirmShareBtn');
+        const cancelShareBtn = document.getElementById('cancelShareBtn');
+        const shareLinkContainer = document.getElementById('shareLinkContainer');
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        const closeShareModalBtn = document.getElementById('closeShareModalBtn');
 
-    // 初始加載（僅在主管理器頁面執行）
+        shareBtn.addEventListener('click', () => {
+            if (shareBtn.disabled) return;
+            shareOptions.style.display = 'block';
+            shareResult.style.display = 'none';
+            shareModal.style.display = 'flex';
+        });
+
+        cancelShareBtn.addEventListener('click', () => shareModal.style.display = 'none');
+        closeShareModalBtn.addEventListener('click', () => shareModal.style.display = 'none');
+        
+        confirmShareBtn.addEventListener('click', async () => {
+            const messageId = selectedItems.keys().next().value;
+            const expiresIn = expiresInSelect.value;
+            try {
+                const res = await axios.post('/share', { messageId, expiresIn });
+                if (res.data.success) {
+                    shareLinkContainer.textContent = res.data.url;
+                    shareOptions.style.display = 'none';
+                    shareResult.style.display = 'block';
+                } else {
+                    alert('創建分享鏈接失敗: ' + res.data.message);
+                }
+            } catch {
+                alert('創建分享鏈接請求失敗');
+            }
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shareLinkContainer.textContent).then(() => {
+                copyLinkBtn.textContent = '已複製!';
+                setTimeout(() => { copyLinkBtn.textContent = '複製鏈接'; }, 2000);
+            });
+        });
+    }
+
+    // --- 其他通用監聽器 ---
+    if (closeModal) closeModal.onclick = () => previewModal.style.display = 'none';
+    if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
+
+    // 初始加載
     if (document.getElementById('itemGrid')) {
         const initialFolderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
         loadFolderContents(initialFolderId);
