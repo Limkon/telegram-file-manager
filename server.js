@@ -5,8 +5,6 @@ const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
 
-// 引用資料庫和相關模組
-const db = require('./database.js'); 
 const data = require('./data.js');
 const { sendFile, deleteMessages, getFileLink } = require('./bot.js');
 
@@ -171,7 +169,6 @@ app.post('/share', requireLogin, async (req, res) => {
     }
 });
 
-// --- 公共分享路由 (无需登录) ---
 app.get('/share/view/:token', async (req, res) => {
     try {
         const token = req.params.token;
