@@ -66,7 +66,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
-    padding-bottom: 100px; /* 為浮動操作欄留出空間 */
+    padding-bottom: 100px;
 }
 .item-card {
     background: var(--card-background);
@@ -135,6 +135,7 @@ body {
 .action-bar.visible { bottom: 20px; }
 .action-bar #selectAllBtn { background: #495057; color: white; border: none; padding: 8px 12px; margin-right: 15px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
 .action-bar #selectionCount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+.action-bar .actions { display: flex; align-items: center; }
 .action-bar .actions button { background: #495057; color: white; border: none; padding: 8px 12px; margin-left: 10px; border-radius: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; transition: background-color 0.2s; }
 .action-bar .actions button:disabled { background: #343a40; color: #6c757d; cursor: not-allowed; }
 .action-bar .actions button:not(:disabled):hover { background: #5a6268; }
@@ -146,3 +147,71 @@ body {
 .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; }
 .modal-content img, .modal-content video { width: auto; height: auto; max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
 .close-button { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+
+
+/* --- *** 新增：手機端優化 (當螢幕寬度小於 768px 時生效) *** --- */
+@media (max-width: 768px) {
+    body {
+        padding: 10px; /* 縮小頁邊距 */
+    }
+
+    .main-header {
+        flex-direction: column; /* 標題和按鈕垂直排列 */
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .main-header h1 {
+        font-size: 24px; /* 縮小標題字體 */
+    }
+
+    .upload-link-btn {
+        padding: 8px 12px; /* 縮小按鈕 */
+        font-size: 14px;
+    }
+    
+    .breadcrumb {
+        font-size: 14px; /* 縮小麵包屑字體 */
+        padding: 8px 10px;
+    }
+
+    /* 讓網格每行顯示更多、更小的卡片 */
+    .item-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 15px;
+    }
+    
+    .item-icon {
+        font-size: 48px; /* 縮小圖示 */
+    }
+
+    .item-info {
+        padding: 8px;
+    }
+
+    .item-info h5 {
+        font-size: 12px; /* 縮小卡片中的檔名 */
+    }
+
+    /* 優化浮動操作欄 */
+    .action-bar {
+        padding: 10px;
+        width: 95%;
+        bottom: -120px; /* 調整初始位置 */
+    }
+     .action-bar.visible { bottom: 10px; }
+
+    .action-bar #selectionCount {
+        font-size: 12px; /* 縮小計數文字 */
+    }
+    
+    .action-bar .actions button {
+        padding: 8px;
+        margin-left: 5px;
+        font-size: 12px;
+    }
+    /* 在手機上，只顯示圖示，隱藏文字標籤以節省空間 */
+    .action-bar .actions button .button-text {
+        display: none;
+    }
+}
