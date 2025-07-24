@@ -1,8 +1,10 @@
+// telegram-file-manager-df63cbcbc7a99b98d3f81cc263302592a9f7d5ed/bot.js
 require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
+const crypto = require('crypto'); // 新增 crypto 模块
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -46,7 +48,6 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
       if (fileData && fileData.file_id) {
         const messages = loadMessages();
         
-        // *** 關鍵修正：捕獲縮略圖 file_id ***
         let thumb_file_id = null;
         if (fileData.thumb) {
             thumb_file_id = fileData.thumb.file_id;
@@ -57,8 +58,9 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '') {
           mimetype: fileData.mime_type || mimetype,
           message_id: result.message_id,
           file_id: fileData.file_id,
-          thumb_file_id: thumb_file_id, // 保存縮略圖ID
+          thumb_file_id: thumb_file_id,
           date: Date.now(),
+          share: null // 新增分享状态字段
         });
         
         if (saveMessages(messages)) {
@@ -131,4 +133,74 @@ async function renameFileInDb(messageId, newFileName) {
     return { success: false, message: '文件未找到或保存失敗。' };
 }
 
-module.exports = { sendFile, loadMessages, getFileLink, renameFileInDb, deleteMessages };
+// --- 新增分享功能相关函数 ---
+
+/**
+ * 创建或更新文件的分享链接
+ * @param {number} messageId 文件的 message_id
+ * @param {string} expiresIn 过期时间 ('1h', '24h', '0' for permanent)
+ * @returns {object} 操作结果
+ */
+async function createShareLink(messageId, expiresIn) {
+    const messages = loadMessages();
+    const fileIndex = messages.findIndex(m => m.message_id === messageId);
+
+    if (fileIndex === -1) {
+        return { success: false, message: '文件未找到。' };
+    }
+
+    const token = crypto.randomBytes(16).toString('hex');
+    let expiresAt = null;
+
+    if (expiresIn === '1h') {
+        expiresAt = Date.now() + 60 * 60 * 1000;
+    } else if (expiresIn === '24h') {
+        expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    }
+
+    messages[fileIndex].share = {
+        token,
+        expiresAt,
+    };
+
+    if (saveMessages(messages)) {
+        return { success: true, token };
+    } else {
+        return { success: false, message: '保存分享鏈接失敗。' };
+    }
+}
+
+/**
+ * 根据 token 获取分享的文件信息
+ * @param {string} token 分享 token
+ * @returns {object|null} 文件信息或 null
+ */
+async function getSharedFile(token) {
+    const messages = loadMessages();
+    const file = messages.find(m => m.share && m.share.token === token);
+
+    if (!file) {
+        return null; // Token 无效
+    }
+
+    // 检查是否过期
+    if (file.share.expiresAt && Date.now() > file.share.expiresAt) {
+        // 可选：在这里可以顺便清理掉过期的 token
+        file.share = null;
+        saveMessages(messages);
+        return null; // 已过期
+    }
+
+    return file;
+}
+
+
+module.exports = { 
+  sendFile, 
+  loadMessages, 
+  getFileLink, 
+  renameFileInDb, 
+  deleteMessages,
+  createShareLink, // 导出新函数
+  getSharedFile    // 导出新函数
+};
