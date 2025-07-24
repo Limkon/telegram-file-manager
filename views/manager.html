@@ -44,7 +44,7 @@
     
     #homeLink { text-decoration: none; color: var(--text-color); display: inline-flex; align-items: center; gap: 10px; }
 
-    /* --- *** 新增：上傳彈窗相關樣式 *** --- */
+    /* 上傳彈窗相關樣式 */
     .upload-modal-content { background-color: var(--card-background); padding: 24px; border-radius: 8px; box-shadow: var(--shadow); width: 100%; max-width: 600px; position: relative; }
     #uploadForm input, #uploadForm button, #uploadForm select { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
     #uploadForm button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-size: 16px; }
@@ -53,7 +53,11 @@
     .progress-area { margin-top: 15px; display: none; }
     .progress-bar-container { width: 100%; height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; }
     .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.4s ease; }
-    .notification { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 5px; color: white; z-index: 1000; font-weight: bold; }
+    
+    /* --- *** 新增：通知樣式 *** --- */
+    .notification { padding: 12px 20px; border-radius: 5px; color: white; z-index: 1000; font-weight: bold; }
+    .notification.global { position: fixed; top: 20px; right: 20px; } /* 全域通知 */
+    .notification.local { margin-bottom: 15px; } /* 局部通知 */
     .notification.success { background-color: #28a745; }
     .notification.error { background-color: #dc3545; }
   </style>
@@ -127,6 +131,7 @@
     <div class="upload-modal-content">
         <span class="close-button" id="closeUploadModalBtn">&times;</span>
         <h2>文件上傳</h2>
+        <div id="uploadNotificationArea"></div>
         <form id="uploadForm">
             <input type="file" name="files" id="fileInput" required multiple />
             <ul id="file-selection-list"></ul>
