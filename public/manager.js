@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM 元素
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
@@ -7,43 +6,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
-
-    // 按鈕
     const moveBtn = document.getElementById('moveBtn');
     const deleteBtn = document.getElementById('deleteBtn');
-
-    // 移動模態框
     const moveModal = document.getElementById('moveModal');
     const folderTree = document.getElementById('folderTree');
     const confirmMoveBtn = document.getElementById('confirmMoveBtn');
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
 
-    // 狀態
     let currentFolderId = 1;
     let selectedItems = new Map();
     let currentFolderContents = { folders: [], files: [] };
     let moveTargetFolderId = null;
     let isSearchMode = false;
 
-    // --- 核心功能：加載和渲染 ---
     const loadFolderContents = async (folderId) => {
         try {
+            // --- 偵錯日誌 ---
+            console.log(`[DEBUG - manager.js] 準備發起請求以加載 folderId: ${folderId}`);
+            const requestUrl = `/api/folder/${folderId}`;
+            console.log(`[DEBUG - manager.js] 請求的 URL: ${requestUrl}`);
+
             isSearchMode = false;
-            searchInput.value = ''; // 退出搜尋模式
+            searchInput.value = '';
             itemGrid.innerHTML = '<p>正在加載...</p>';
             currentFolderId = folderId;
-            const res = await axios.get(`/api/folder/${folderId}`);
+            
+            const res = await axios.get(requestUrl);
+            
+            // --- 偵錯日誌 ---
+            console.log('[DEBUG - manager.js] 成功收到後端回應:', res.data);
+
             currentFolderContents = res.data.contents;
             selectedItems.clear();
             renderBreadcrumb(res.data.path);
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         } catch (error) {
-            itemGrid.innerHTML = '<p>加載內容失敗。</p>';
+            // --- 偵錯日誌 ---
+            console.error('[DEBUG - manager.js] 加載內容時捕獲到錯誤:', error);
+            if (error.response) {
+                console.error('[DEBUG - manager.js] 錯誤回應的資料:', error.response.data);
+                console.error('[DEBUG - manager.js] 錯誤回應的狀態碼:', error.response.status);
+            }
+            itemGrid.innerHTML = '<p>加載內容失敗。請檢查瀏覽器開發者控制台以獲取詳細資訊。</p>';
         }
     };
-
-    // --- 新增：處理搜尋 ---
+    
+    // ... (檔案中所有其他函式保持不變) ...
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
@@ -51,19 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
             currentFolderContents = res.data.contents;
             selectedItems.clear();
-            renderBreadcrumb(res.data.path); // 顯示搜尋結果的特殊路徑
+            renderBreadcrumb(res.data.path);
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>搜尋失敗。</p>';
         }
     };
-
     const renderBreadcrumb = (path) => {
         breadcrumb.innerHTML = '';
         path.forEach((p, index) => {
             if (index > 0) breadcrumb.innerHTML += '<span class="separator">/</span>';
-            // 對於搜尋結果的特殊路徑，不創建連結
             if (p.id === null) {
                 breadcrumb.innerHTML += `<span>${p.name}</span>`;
                 return;
@@ -77,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
             breadcrumb.appendChild(link);
         });
     };
-
     const renderItems = (folders, files) => {
         itemGrid.innerHTML = '';
         if (folders.length === 0 && files.length === 0) {
@@ -87,7 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         folders.forEach(f => itemGrid.appendChild(createItemCard(f.id, 'folder', f.name)));
         files.forEach(f => itemGrid.appendChild(createItemCard(f.id, 'file', f.name, f.mimetype)));
     };
-
     const createItemCard = (id, type, name, mimetype = '') => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -99,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedItems.has(String(id))) card.classList.add('selected');
         return card;
     };
-
     const getFileIconClass = (mimetype) => {
         if (!mimetype) return 'fa-file';
         if (mimetype.startsWith('image/')) return 'fa-file-image';
@@ -109,24 +113,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mimetype.includes('archive') || mimetype.includes('zip')) return 'fa-file-archive';
         return 'fa-file-alt';
     };
-    
     const updateActionBar = () => {
         const count = selectedItems.size;
         selectionCountSpan.textContent = `已選擇 ${count} 個項目`;
         let filesCount = 0, foldersCount = 0;
         selectedItems.forEach(item => item.type === 'file' ? filesCount++ : foldersCount++);
-        
         document.getElementById('previewBtn').disabled = count !== 1 || foldersCount === 1;
         document.getElementById('shareBtn').disabled = count !== 1 || foldersCount === 1;
         document.getElementById('renameBtn').disabled = count !== 1;
-        moveBtn.disabled = count === 0 || isSearchMode; // 搜尋模式下禁用移動
+        moveBtn.disabled = count === 0 || isSearchMode;
         document.getElementById('downloadBtn').disabled = filesCount === 0 || foldersCount > 0;
         deleteBtn.disabled = count === 0;
-        
         actionBar.classList.toggle('visible', count > 0);
     };
-
-    // --- 事件監聽 ---
     itemGrid.addEventListener('click', e => {
         const card = e.target.closest('.item-card');
         if (!card) return;
@@ -140,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateActionBar();
     });
-
     itemGrid.addEventListener('dblclick', e => {
         const card = e.target.closest('.item-card');
         if (card && card.dataset.type === 'folder') {
@@ -148,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadFolderContents(parseInt(card.dataset.id, 10));
         }
     });
-
     breadcrumb.addEventListener('click', e => {
         e.preventDefault();
         const link = e.target.closest('a');
@@ -157,12 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
             loadFolderContents(parseInt(link.dataset.folderId, 10));
         }
     });
-    
     window.addEventListener('popstate', () => {
         const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
         loadFolderContents(folderId);
     });
-
     createFolderBtn.addEventListener('click', async () => {
         const name = prompt('請輸入新資料夾的名稱：');
         if (name && name.trim()) {
@@ -172,19 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert(error.response?.data?.message || '建立失敗'); }
         }
     });
-    
-    // --- 新增：搜尋表單提交事件 ---
     searchForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const query = searchInput.value.trim();
         if (query) {
             executeSearch(query);
         } else {
-            // 如果搜尋框清空，則返回目前資料夾
             loadFolderContents(currentFolderId);
         }
     });
-
     deleteBtn.addEventListener('click', async () => {
         if (selectedItems.size === 0) return;
         if (!confirm(`確定要刪除這 ${selectedItems.size} 個項目嗎？\n注意：刪除資料夾將會一併刪除其所有內容！`)) return;
@@ -199,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
         } catch (error) { alert('刪除失敗，請重試。'); }
     });
-
     moveBtn.addEventListener('click', async () => {
         if (selectedItems.size === 0) return;
         try {
@@ -224,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
             moveModal.style.display = 'flex';
         } catch { alert('無法獲取資料夾列表。'); }
     });
-    
     folderTree.addEventListener('click', e => {
         const target = e.target.closest('.folder-item');
         if (!target) return;
@@ -233,9 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         moveTargetFolderId = parseInt(target.dataset.folderId);
         confirmMoveBtn.disabled = false;
     });
-
     cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
-
     confirmMoveBtn.addEventListener('click', async () => {
         if (!moveTargetFolderId) return;
         const itemIds = Array.from(selectedItems.keys()).map(Number);
@@ -245,8 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadFolderContents(currentFolderId);
         } catch (error) { alert('移動失敗'); }
     });
-
-    // 初始加載
     const initialFolderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
     loadFolderContents(initialFolderId);
 });
