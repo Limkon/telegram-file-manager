@@ -9,67 +9,41 @@
   <link rel="stylesheet" href="/manager.css">
   <style>
     .modal { z-index: 1002; }
-    .move-modal-content {
-        background-color: #fff;
-        padding: 25px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 450px;
-        text-align: center;
-    }
+    .move-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; text-align: center; }
     .move-modal-content h3 { margin-top: 0; }
-    #folderTree {
-        max-height: 300px;
-        overflow-y: auto;
-        text-align: left;
-        border: 1px solid #eee;
-        padding: 10px;
-        margin-top: 15px;
-    }
-    #folderTree .folder-item {
-        padding: 8px;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-    #folderTree .folder-item:hover {
-        background-color: #f1f3f5;
-    }
-    #folderTree .folder-item.selected {
-        background-color: var(--primary-color);
-        color: white;
-    }
-    #confirmMoveBtn, #cancelMoveBtn {
-        width: 48%;
-        padding: 10px;
-        margin-top: 15px;
-        border-radius: 5px;
-        border: none;
-        cursor: pointer;
-    }
-    #confirmMoveBtn {
-        background-color: var(--primary-color);
-        color: white;
-    }
-    #cancelMoveBtn {
-        background-color: #6c757d;
-        color: white;
-    }
-    .create-folder-btn {
-        background-color: #17a2b8;
-    }
+    #folderTree { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-top: 15px; }
+    #folderTree .folder-item { padding: 8px; cursor: pointer; border-radius: 4px; }
+    #folderTree .folder-item:hover { background-color: #f1f3f5; }
+    #folderTree .folder-item.selected { background-color: var(--primary-color); color: white; }
+    #confirmMoveBtn, #cancelMoveBtn { width: 48%; padding: 10px; margin-top: 15px; border-radius: 5px; border: none; cursor: pointer; }
+    #confirmMoveBtn { background-color: var(--primary-color); color: white; }
+    #cancelMoveBtn { background-color: #6c757d; color: white; }
+    .create-folder-btn { background-color: #17a2b8; }
+    /* 新增搜尋框樣式 */
+    .search-form { position: relative; flex-grow: 1; max-width: 400px; }
+    #searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
+    .search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
   </style>
 </head>
 <body>
   <div class="container">
     <header class="main-header">
       <h1>文件管理器</h1>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; align-items: center;">
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i> 共享管理</a>
         <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i> 建立新資料夾</button>
         <a href="/upload-page" class="upload-link-btn"><i class="fas fa-upload"></i> 上傳新文件</a>
       </div>
     </header>
-    <nav class="breadcrumb" id="breadcrumb"></nav>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+        <nav class="breadcrumb" id="breadcrumb" style="margin-bottom: 0; flex-grow: 1;"></nav>
+        <form class="search-form" id="searchForm">
+            <i class="fas fa-search"></i>
+            <input type="search" id="searchInput" placeholder="搜尋所有檔案...">
+        </form>
+    </div>
+
     <div class="item-grid" id="itemGrid"></div>
   </div>
 
