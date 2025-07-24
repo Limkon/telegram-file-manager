@@ -51,43 +51,34 @@ app.post('/login', (req, res) => {
 });
 app.get('/', requireLogin, (req, res) => res.redirect('/folder/1'));
 app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
-app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
+// --- *** 關鍵修正：移除舊的 /upload-page 路由 *** ---
 app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
 // --- API 接口 ---
-
-// --- *** 關鍵修正：升級下載 API 以支援資料夾 *** ---
 app.post('/api/download-archive', requireLogin, async (req, res) => {
     try {
         const { messageIds = [], folderIds = [] } = req.body;
         if (messageIds.length === 0 && folderIds.length === 0) {
             return res.status(400).send('未提供任何項目 ID');
         }
-
         let filesToArchive = [];
-        // 獲取單獨選擇的檔案
         if (messageIds.length > 0) {
             const directFiles = await data.getFilesByIds(messageIds);
-            // 為檔案設定根路徑
             filesToArchive.push(...directFiles.map(f => ({ ...f, path: f.fileName })));
         }
-        // 遞歸獲取資料夾中的所有檔案
         for (const folderId of folderIds) {
             const folderInfo = (await data.getFolderPath(folderId)).pop();
             const folderName = folderInfo ? folderInfo.name : 'folder';
             const nestedFiles = await data.getFilesRecursive(folderId, folderName);
             filesToArchive.push(...nestedFiles);
         }
-
         if (filesToArchive.length === 0) {
             return res.status(404).send('找不到任何可下載的檔案');
         }
-
         const archive = archiver('zip', { zlib: { level: 9 } });
         res.attachment('download.zip');
         archive.pipe(res);
-
         for (const file of filesToArchive) {
             const link = await getFileLink(file.file_id);
             if (link) {
@@ -101,7 +92,7 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
     }
 });
 
-
+// ... (所有其他 API 路由保持不變) ...
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
