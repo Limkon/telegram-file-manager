@@ -4,7 +4,7 @@ const session = require('express-session');
 const multer = require('multer');
 const path = require('path');
 const axios = require('axios');
-const archiver = require('archiver'); // 引入新安裝的套件
+const archiver = require('archiver');
 
 const data = require('./data.js');
 const { sendFile, deleteMessages, getFileLink } = require('./bot.js');
@@ -26,7 +26,6 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ... (fixFileNameEncoding 和 requireLogin 函式保持不變) ...
 const fixFileNameEncoding = (req, res, next) => {
     if (req.files) {
         req.files.forEach(file => {
@@ -35,6 +34,7 @@ const fixFileNameEncoding = (req, res, next) => {
     }
     next();
 };
+
 function requireLogin(req, res, next) {
   if (req.session.loggedIn) return next();
   res.redirect('/login');
@@ -58,7 +58,6 @@ app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dir
 
 // --- API 接口 ---
 
-// --- *** 新增：多檔案 ZIP 下載 API *** ---
 app.post('/api/download-archive', requireLogin, async (req, res) => {
     try {
         const { messageIds } = req.body;
@@ -72,19 +71,16 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
         }
 
         const archive = archiver('zip', {
-            zlib: { level: 9 } // 設定壓縮等級
+            zlib: { level: 9 }
         });
 
-        // 設定回應標頭，讓瀏覽器知道這是一個 zip 檔案
         res.attachment('download.zip');
         archive.pipe(res);
 
         for (const file of files) {
             const link = await getFileLink(file.file_id);
             if (link) {
-                // 從 Telegram 串流下載檔案
                 const response = await axios({ url: link, method: 'GET', responseType: 'stream' });
-                // 將檔案串流加入到 ZIP 檔案中
                 archive.append(response.data, { name: file.fileName });
             }
         }
@@ -96,8 +92,6 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
     }
 });
 
-
-// ... (其他 API 路由保持不變) ...
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
@@ -107,6 +101,7 @@ app.get('/api/search', requireLogin, async (req, res) => {
         res.json({ contents, path });
     } catch (error) { res.status(500).json({ success: false, message: '搜尋失敗。' }); }
 });
+
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
     const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
@@ -117,6 +112,7 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     }
     res.json({ success: true, results });
 });
+
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
         const folderId = parseInt(req.params.id, 10);
@@ -125,6 +121,7 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
         res.json({ contents, path });
     } catch (error) { res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' }); }
 });
+
 app.post('/api/folder', requireLogin, async (req, res) => {
     try {
         const { name, parentId } = req.body;
@@ -133,12 +130,14 @@ app.post('/api/folder', requireLogin, async (req, res) => {
         res.json(result);
     } catch (error) { res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' }); }
 });
+
 app.get('/api/folders', requireLogin, async (req, res) => {
     try {
         const folders = await data.getAllFolders();
         res.json(folders);
     } catch (error) { res.status(500).json({ success: false, message: '獲取資料夾列表失敗' }); }
 });
+
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId } = req.body;
@@ -147,6 +146,7 @@ app.post('/api/move', requireLogin, async (req, res) => {
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false, message: '移動失敗' }); }
 });
+
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     try {
         const { folderId } = req.body;
@@ -156,6 +156,7 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false, message: '刪除資料夾失敗' }); }
 });
+
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -169,6 +170,7 @@ app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
         res.end(placeholder);
     } catch (error) { res.status(500).send('獲取縮圖失敗'); }
 });
+
 app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -183,6 +185,7 @@ app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
         } else { res.status(404).send('文件信息未找到'); }
     } catch (error) { res.status(500).send('下載代理失敗'); }
 });
+
 app.get('/file/content/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -197,6 +200,7 @@ app.get('/file/content/:message_id', requireLogin, async (req, res) => {
         } else { res.status(404).json({ success: false, message: '文件未找到。' }); }
     } catch (error) { res.status(500).json({ success: false, message: '無法獲取文件內容。' }); }
 });
+
 app.post('/rename', requireLogin, async (req, res) => {
     try {
         const { messageId, newFileName } = req.body;
@@ -205,6 +209,7 @@ app.post('/rename', requireLogin, async (req, res) => {
         res.json(result);
     } catch (error) { res.status(500).json({ success: false, message: '重命名失敗' }); }
 });
+
 app.post('/delete-multiple', requireLogin, async (req, res) => {
     try {
         const { messageIds } = req.body;
@@ -213,6 +218,7 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
         res.json(result);
     } catch (error) { res.status(500).json({ success: false, message: '刪除失敗' }); }
 });
+
 app.post('/share', requireLogin, async (req, res) => {
     try {
         const { messageId, expiresIn } = req.body;
@@ -226,6 +232,7 @@ app.post('/share', requireLogin, async (req, res) => {
         }
     } catch (error) { res.status(500).json({ success: false, message: '創建分享鏈接失敗' }); }
 });
+
 app.get('/api/shared-files', requireLogin, async (req, res) => {
     try {
         const files = await data.getActiveSharedFiles();
@@ -236,6 +243,7 @@ app.get('/api/shared-files', requireLogin, async (req, res) => {
         res.json(fullUrlFiles);
     } catch (error) { res.status(500).json({ success: false, message: '獲取分享列表失敗' }); }
 });
+
 app.post('/api/cancel-share', requireLogin, async (req, res) => {
     try {
         const { messageId } = req.body;
@@ -244,6 +252,7 @@ app.post('/api/cancel-share', requireLogin, async (req, res) => {
         res.json(result);
     } catch (error) { res.status(500).json({ success: false, message: '取消分享失敗' }); }
 });
+
 app.get('/share/view/:token', async (req, res) => {
     try {
         const token = req.params.token;
@@ -264,6 +273,7 @@ app.get('/share/view/:token', async (req, res) => {
         }
     } catch (error) { res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' }); }
 });
+
 app.get('/share/download/:token', async (req, res) => {
     try {
         const token = req.params.token;
@@ -278,6 +288,5 @@ app.get('/share/download/:token', async (req, res) => {
         } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
     } catch (error) { res.status(500).send('下載失敗'); }
 });
-
 
 app.listen(PORT, () => console.log(`✅ 服務器運行在 http://localhost:${PORT}`));
