@@ -91,19 +91,30 @@ document.addEventListener('DOMContentLoaded', () => {
             itemGrid.innerHTML = isSearchMode ? '<p>找不到符合條件的檔案。</p>' : '<p>這個資料夾是空的。</p>';
             return;
         }
-        folders.forEach(f => itemGrid.appendChild(createItemCard(f.id, 'folder', f.name)));
-        files.forEach(f => itemGrid.appendChild(createItemCard(f.id, 'file', f.name, f.mimetype)));
+        folders.forEach(f => itemGrid.appendChild(createItemCard(f)));
+        files.forEach(f => itemGrid.appendChild(createItemCard(f)));
     };
 
-    const createItemCard = (id, type, name, mimetype = '') => {
+    const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
-        card.dataset.id = id;
-        card.dataset.type = type;
-        card.dataset.name = name;
-        const iconHtml = type === 'folder' ? '<i class="fas fa-folder"></i>' : `<i class="fas ${getFileIconClass(mimetype)}"></i>`;
-        card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${name}">${name}</h5></div>`;
-        if (selectedItems.has(String(id))) card.classList.add('selected');
+        card.dataset.id = item.id;
+        card.dataset.type = item.type;
+        card.dataset.name = item.name;
+
+        let iconHtml = '';
+        // --- *** 關鍵修正 1：優先顯示縮圖 *** ---
+        const fileInfo = currentFolderContents.files.find(f => f.id === item.id);
+        if (item.type === 'file' && fileInfo && fileInfo.thumb_file_id) {
+            iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
+        } else if (item.type === 'folder') {
+            iconHtml = '<i class="fas fa-folder"></i>';
+        } else {
+            iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
+        }
+
+        card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name}</h5></div>`;
+        if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
     };
 
@@ -140,11 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = e.target.closest('.item-card');
             if (!card) return;
             const id = card.dataset.id;
+            const type = card.dataset.type;
+            const name = card.dataset.name;
+
             if (selectedItems.has(id)) {
                 selectedItems.delete(id);
                 card.classList.remove('selected');
             } else {
-                selectedItems.set(id, { type: card.dataset.type, name: card.dataset.name });
+                selectedItems.set(id, { type, name });
                 card.classList.add('selected');
             }
             updateActionBar();
@@ -199,16 +213,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (previewBtn) {
+        // --- *** 關鍵修正 2：重寫預覽邏輯 *** ---
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
             const messageId = selectedItems.keys().next().value;
+            const file = currentFolderContents.files.find(f => f.id == messageId);
+            if (!file) return;
+
             previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
-            try {
-                const res = await axios.get(`/file/content/${messageId}`);
-                modalContent.innerHTML = `<pre>${res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</pre>`;
-            } catch {
-                modalContent.innerHTML = '此檔案類型不支持文字預覽，請下載後查看。';
+            
+            const downloadUrl = `/download/proxy/${messageId}`;
+            if (file.mimetype && file.mimetype.startsWith('image/')) {
+                modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片預覽">`;
+            } else if (file.mimetype && file.mimetype.startsWith('video/')) {
+                modalContent.innerHTML = `<video src="${downloadUrl}" controls autoplay></video>`;
+            } else if (file.mimetype && file.mimetype.startsWith('text/')) {
+                try {
+                    const res = await axios.get(`/file/content/${messageId}`);
+                    const escapedContent = res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+                    modalContent.innerHTML = `<pre><code>${escapedContent}</code></pre>`;
+                } catch {
+                    modalContent.innerHTML = '無法載入文字內容。';
+                }
+            } else {
+                modalContent.innerHTML = '此檔案類型不支持預覽。';
             }
         });
     }
@@ -234,18 +263,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (downloadBtn) {
-        // --- *** 關鍵修正：修復多檔案下載邏輯 *** ---
         downloadBtn.addEventListener('click', () => {
             if (downloadBtn.disabled) return;
             selectedItems.forEach((item, id) => {
                 if (item.type === 'file') {
-                    // 創建一個隱藏的 a 標籤來觸發下載
                     const link = document.createElement('a');
                     link.href = `/download/proxy/${id}`;
                     link.style.display = 'none';
                     document.body.appendChild(link);
                     link.click();
-                    // 觸發後立即移除，保持頁面乾淨
                     document.body.removeChild(link);
                 }
             });
@@ -292,7 +318,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 tree.forEach(buildTree);
                 moveModal.style.display = 'flex';
+                // 重置狀態
+                moveTargetFolderId = null;
+                confirmMoveBtn.disabled = true;
             } catch { alert('無法獲取資料夾列表。'); }
+        });
+    }
+    
+    if (folderTree) {
+        // --- *** 關鍵修正 3：修正移動目標的選擇邏輯 *** ---
+        folderTree.addEventListener('click', e => {
+            const target = e.target.closest('.folder-item');
+            if (!target) return;
+            
+            const previouslySelected = folderTree.querySelector('.folder-item.selected');
+            if (previouslySelected) {
+                previouslySelected.classList.remove('selected');
+            }
+            
+            target.classList.add('selected');
+            moveTargetFolderId = parseInt(target.dataset.folderId);
+            confirmMoveBtn.disabled = false;
         });
     }
     
@@ -353,7 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (closeModal) closeModal.onclick = () => previewModal.style.display = 'none';
+    if (closeModal) closeModal.onclick = () => {
+        previewModal.style.display = 'none';
+        modalContent.innerHTML = ''; // 清空內容以停止影片播放
+    };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
 
     if (document.getElementById('itemGrid')) {
