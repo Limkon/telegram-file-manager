@@ -51,27 +51,29 @@ app.post('/login', (req, res) => {
   }
 });
 
-// 主頁面現在會重新導向到根目錄
 app.get('/', requireLogin, (req, res) => {
-    res.redirect('/folder/1'); // 預設進入 ID 為 1 的根目錄
+    res.redirect('/folder/1');
 });
-// 讓前端可以直接透過 URL 訪問指定資料夾
 app.get('/folder/:id', requireLogin, (req, res) => {
     res.sendFile(path.join(__dirname, 'views/manager.html'));
 });
 
-app.get('/upload-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/dashboard.html')));
-app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
+// 更新上傳頁面路由，讓它能接收 folderId
+app.get('/upload-page', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/dashboard.html'));
+});
+
+app.get('/shares-page', requireLogin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views/shares.html'));
+});
 
 
 // --- API 接口 ---
 
-// 更新上傳 API 以處理 folderId
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, message: '沒有選擇文件' });
     }
-    // 從表單中獲取 folderId，如果沒有則預設為 1 (根目錄)
     const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
     const results = [];
     for (const file of req.files) {
@@ -81,7 +83,6 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
-// 新增：獲取指定資料夾內容的 API
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
         const folderId = parseInt(req.params.id, 10);
@@ -93,7 +94,6 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
     }
 });
 
-// 新增：建立資料夾 API
 app.post('/api/folder', requireLogin, async (req, res) => {
     try {
         const { name, parentId } = req.body;
@@ -107,8 +107,55 @@ app.post('/api/folder', requireLogin, async (req, res) => {
     }
 });
 
+// --- 新增：獲取所有資料夾列表的 API ---
+app.get('/api/folders', requireLogin, async (req, res) => {
+    try {
+        const folders = await data.getAllFolders();
+        res.json(folders);
+    } catch (error) {
+        res.status(500).json({ success: false, message: '獲取資料夾列表失敗' });
+    }
+});
 
-// ... (其他 API 如 /thumbnail, /download/proxy 等保持不變，但它們現在依賴於 getFilesByIds，這是正確的) ...
+// --- 新增：移動項目的 API ---
+app.post('/api/move', requireLogin, async (req, res) => {
+    try {
+        const { itemIds, targetFolderId } = req.body;
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) {
+            return res.status(400).json({ success: false, message: '無效的請求參數。' });
+        }
+        // 注意：這裡簡化了邏輯，前端需要保證傳來的是同種類型的 ID (全是檔案或全是資料夾)
+        await data.moveItems(itemIds, targetFolderId);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '移動失敗' });
+    }
+});
+
+// --- 新增：刪除資料夾的 API ---
+app.post('/api/folder/delete', requireLogin, async (req, res) => {
+    try {
+        const { folderId } = req.body;
+        if (!folderId || folderId === 1) { // 不允許刪除根目錄
+            return res.status(400).json({ success: false, message: '無效的資料夾 ID 或試圖刪除根目錄。' });
+        }
+        
+        // 1. 遞歸查找所有要刪除的檔案 message_id
+        const messageIdsToDelete = await data.deleteFolderRecursive(folderId);
+        
+        // 2. 從 Telegram 刪除所有實體檔案
+        if (messageIdsToDelete.length > 0) {
+            await deleteMessages(messageIdsToDelete);
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '刪除資料夾失敗' });
+    }
+});
+
+
+// ... (其他 API 和路由保持不變) ...
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
