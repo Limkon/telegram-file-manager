@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // DOM 元素
+    const homeLink = document.getElementById('homeLink'); // 新增
     const itemGrid = document.getElementById('itemGrid');
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
@@ -7,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const createFolderBtn = document.querySelector('.create-folder-btn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
+
+    // 操作按鈕
     const multiSelectBtn = document.getElementById('multiSelectBtn');
     const previewBtn = document.getElementById('previewBtn');
     const shareBtn = document.getElementById('shareBtn');
@@ -15,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
+
+    // 模態框
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -146,6 +151,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- 事件監聽 ---
+    if (homeLink) {
+        homeLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.history.pushState(null, '', '/folder/1');
+            loadFolderContents(1);
+        });
+    }
+
     if (itemGrid) {
         itemGrid.addEventListener('click', e => {
             const card = e.target.closest('.item-card');
@@ -153,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = card.dataset.id;
             const type = card.dataset.type;
             const name = card.dataset.name;
-            
             if (isMultiSelectMode) {
                 if (selectedItems.has(id)) {
                     selectedItems.delete(id);
