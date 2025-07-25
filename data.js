@@ -22,6 +22,40 @@ function findUserByName(username) {
     });
 }
 
+// --- *** 新增部分 開始 *** ---
+function changeUserPassword(userId, newHashedPassword) {
+    return new Promise((resolve, reject) => {
+        const sql = `UPDATE users SET password = ? WHERE id = ?`;
+        db.run(sql, [newHashedPassword, userId], function(err) {
+            if (err) return reject(err);
+            resolve({ success: true, changes: this.changes });
+        });
+    });
+}
+
+function listNormalUsers() {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT id, username FROM users WHERE is_admin = 0 ORDER BY username ASC`;
+        db.all(sql, [], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+function deleteUser(userId) {
+    return new Promise((resolve, reject) => {
+        // DB schema 'ON DELETE CASCADE' 會自動刪除關聯的 files 和 folders
+        const sql = `DELETE FROM users WHERE id = ? AND is_admin = 0`; 
+        db.run(sql, [userId], function(err) {
+            if (err) return reject(err);
+            resolve({ success: true, changes: this.changes });
+        });
+    });
+}
+// --- *** 新增部分 結束 *** ---
+
+
 // --- 檔案搜尋 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
@@ -155,7 +189,7 @@ function addFile(fileData, folderId = 1, userId, storageType) {
     return new Promise((resolve, reject) => {
         db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, folderId, userId, storageType], function(err) {
             if (err) reject(err);
-            else resolve({ success: true, id: this.lastID });
+            else resolve({ success: true, id: this.lastID, fileId: this.lastID });
         });
     });
 }
@@ -199,7 +233,6 @@ function renameFile(messageId, newFileName, userId) {
     });
 }
 
-// --- *** 新增部分 開始 *** ---
 function renameFolder(folderId, newFolderName, userId) {
     const sql = `UPDATE folders SET name = ? WHERE id = ? AND user_id = ?`;
     return new Promise((resolve, reject) => {
@@ -210,7 +243,6 @@ function renameFolder(folderId, newFolderName, userId) {
         });
     });
 }
-// --- *** 新增部分 結束 *** ---
 
 function createShareLink(messageId, expiresIn, userId) {
     const token = crypto.randomBytes(16).toString('hex');
@@ -296,6 +328,9 @@ function findFileInFolder(fileName, folderId, userId) {
 module.exports = { 
     createUser,
     findUserByName,
+    changeUserPassword,
+    listNormalUsers,
+    deleteUser,
     searchFiles, 
     getFolderContents, 
     getFilesRecursive, 
@@ -311,7 +346,7 @@ module.exports = {
     getActiveSharedFiles, 
     cancelShare, 
     renameFile, 
-    renameFolder, // <-- 匯出新函式
+    renameFolder,
     deleteFilesByIds,
     findFileInFolder,
     checkNameConflict
