@@ -21,20 +21,20 @@
 
         <div class="item-grid">
             <% contents.folders.forEach(f => { %>
-                <a href="/share/view/folder/<%= f.share_token %>" class="item-card" data-id="<%= f.id %>" data-type="folder">
+                <div class="item-card" data-id="<%= f.id %>" data-type="folder" title="不支援在分享頁面中打開子資料夾">
                     <div class="item-icon"><i class="fas fa-folder"></i></div>
                     <div class="item-info"><h5 title="<%= f.name %>"><%= f.name %></h5></div>
-                </a>
+                </div>
             <% }); %>
             <% contents.files.forEach(f => { %>
-                <a href="/download/proxy/<%= f.id %>" class="item-card" data-id="<%= f.id %>" data-type="file">
+                <a href="/share/download/<%= folder.share_token %>/<%= f.id %>" class="item-card" data-id="<%= f.id %>" data-type="file" target="_blank" rel="noopener noreferrer">
                     <div class="item-icon">
                         <% if (f.storage_type === 'telegram' && f.thumb_file_id) { %>
-                            <img src="/thumbnail/<%= f.id %>" alt="縮圖" loading="lazy">
+                            <img src="/share/thumbnail/<%= folder.share_token %>/<%= f.id %>" alt="縮圖" loading="lazy">
                         <% } else if (f.mimetype && f.mimetype.startsWith('image/')) { %>
-                            <img src="/download/proxy/<%= f.id %>" alt="圖片" loading="lazy">
+                            <img src="/share/download/<%= folder.share_token %>/<%= f.id %>" alt="圖片" loading="lazy">
                         <% } else if (f.mimetype && f.mimetype.startsWith('video/')) { %>
-                            <video src="/download/proxy/<%= f.id %>#t=0.1" preload="metadata" muted></video>
+                            <video src="/share/download/<%= folder.share_token %>/<%= f.id %>#t=0.1" preload="metadata" muted></video>
                         <% } else { %>
                             <i class="fas <%= f.mimetype && f.mimetype.startsWith('text/') ? 'fa-file-alt' : 'fa-file' %>"></i>
                         <% } %>
