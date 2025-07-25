@@ -576,7 +576,6 @@ app.post('/share', requireLogin, async (req, res) => {
             res.status(404).json(result); 
         }
     } catch (error) {
-        console.error("Share link creation error:", error);
         res.status(500).json({ success: false, message: '在伺服器上建立分享連結時發生錯誤。' });
     }
 });
