@@ -203,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('加載資料夾列表失敗', error);
         }
     };
-
     const uploadFiles = async (files, targetFolderId, isDrag = false) => {
         if (files.length === 0) return;
 
@@ -338,22 +337,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const files = [];
-            const items = e.dataTransfer.items;
+            const files = Array.from(e.dataTransfer.files);
             let hasFolder = false;
-            if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
+            if (e.dataTransfer.items) {
+                for(let i=0; i<e.dataTransfer.items.length; i++) {
+                    const item = e.dataTransfer.items[i];
                     if (typeof item.webkitGetAsEntry === "function" && item.webkitGetAsEntry().isDirectory) {
                         hasFolder = true;
                         break;
                     }
-                    if (item.kind === 'file') {
-                        files.push(item.getAsFile());
-                    }
                 }
-            } else {
-                 files.push(...Array.from(e.dataTransfer.files));
             }
 
             if (hasFolder) {
@@ -367,7 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // ... (剩下的程式碼與之前相同) ...
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -613,12 +605,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirmMoveBtn) {
         confirmMoveBtn.addEventListener('click', async () => {
             if (!moveTargetFolderId) return;
+    
             const itemIds = Array.from(selectedItems.keys()).map(Number);
+            
             try {
-                await axios.post('/api/move', { itemIds, targetFolderId: moveTargetFolderId });
-                moveModal.style.display = 'none';
-                loadFolderContents(currentFolderId);
-            } catch (error) { alert('移動失敗'); }
+                const conflictRes = await axios.post('/api/check-move-conflict', {
+                    itemIds: itemIds.filter(id => selectedItems.get(String(id)).type === 'file'),
+                    targetFolderId: moveTargetFolderId
+                });
+    
+                const conflicts = conflictRes.data.conflicts;
+                let proceedWithMove = true;
+                let overwrite = false;
+    
+                if (conflicts && conflicts.length > 0) {
+                    if (confirm(`目標資料夾已存在以下同名檔案：\n\n- ${conflicts.join('\n- ')}\n\n是否要覆蓋這些檔案？`)) {
+                        overwrite = true;
+                    } else {
+                        proceedWithMove = false;
+                    }
+                }
+    
+                if (proceedWithMove) {
+                    await axios.post('/api/move', { 
+                        itemIds, 
+                        targetFolderId: moveTargetFolderId,
+                        overwrite
+                    });
+                    moveModal.style.display = 'none';
+                    loadFolderContents(currentFolderId);
+                     showNotification('項目移動成功！', 'success');
+                } else {
+                     showNotification('移動操作已取消。', 'info');
+                }
+            } catch (error) {
+                alert('操作失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+            }
         });
     }
     if (shareBtn && shareModal) {
