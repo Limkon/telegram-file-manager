@@ -4,7 +4,6 @@ const localStorage = require('./local');
 const fs = require('fs');
 const path = require('path');
 
-// --- 新增：設定檔管理 ---
 const CONFIG_FILE = path.join(__dirname, '..', 'data', 'config.json');
 
 function readConfig() {
@@ -28,12 +27,11 @@ function writeConfig(config) {
         return false;
     }
 }
-// --- 結束 ---
 
 let config = readConfig();
-let storage;
 
 function getStorage() {
+    config = readConfig(); 
     if (config.storageMode === 'local') {
         return localStorage;
     }
@@ -47,9 +45,6 @@ function setStorageMode(mode) {
     }
     return false;
 }
-
-storage = getStorage();
-console.log(`✅ 使用 ${storage.type} 儲存模式`);
 
 module.exports = {
     getStorage,
