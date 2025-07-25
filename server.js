@@ -125,7 +125,6 @@ app.get('/local-files/:userId/:fileId', requireLogin, (req, res) => {
 
 
 // --- API 接口 ---
-// --- *** 修改部分 開始 *** ---
 app.post('/api/user/change-password', requireLogin, async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     
@@ -152,7 +151,6 @@ app.post('/api/user/change-password', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '修改密碼失敗。' });
     }
 });
-// --- *** 修改部分 結束 *** ---
 
 app.get('/api/admin/storage-mode', requireAdmin, (req, res) => {
     res.json({ mode: storageManager.readConfig().storageMode });
@@ -563,32 +561,39 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
 
 
 app.post('/share', requireLogin, async (req, res) => {
-    const { messageId, expiresIn } = req.body;
-    const result = await data.createShareLink(parseInt(messageId, 10), expiresIn, req.session.userId);
+    const { itemId, itemType, expiresIn } = req.body;
+    if (!itemId || !itemType || !expiresIn) return res.status(400).json({ success: false, message: '缺少必要參數。' });
+    
+    const result = await data.createShareLink(parseInt(itemId, 10), itemType, expiresIn, req.session.userId);
     if (result.success) {
-        const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${result.token}`;
+        const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${itemType}/${result.token}`;
         res.json({ success: true, url: shareUrl });
     } else {
         res.status(500).json(result);
     }
 });
 
-app.get('/api/shared-files', requireLogin, async (req, res) => {
-    const files = await data.getActiveSharedFiles(req.session.userId);
-    const fullUrlFiles = files.map(file => ({
-        ...file,
-        share_url: `${req.protocol}://${req.get('host')}/share/view/${file.share_token}`
-    }));
-    res.json(fullUrlFiles);
+app.get('/api/shares', requireLogin, async (req, res) => {
+    try {
+        const shares = await data.getActiveShares(req.session.userId);
+        const fullUrlShares = shares.map(item => ({
+            ...item,
+            share_url: `${req.protocol}://${req.get('host')}/share/view/${item.type}/${item.share_token}`
+        }));
+        res.json(fullUrlShares);
+    } catch (error) { res.status(500).json({ success: false, message: '獲取分享列表失敗' }); }
 });
 
 app.post('/api/cancel-share', requireLogin, async (req, res) => {
-    const { messageId } = req.body;
-    const result = await data.cancelShare(parseInt(messageId, 10), req.session.userId);
-    res.json(result);
+    try {
+        const { itemId, itemType } = req.body;
+        if (!itemId || !itemType) return res.status(400).json({ success: false, message: '缺少必要參數' });
+        const result = await data.cancelShare(parseInt(itemId, 10), itemType, req.session.userId);
+        res.json(result);
+    } catch (error) { res.status(500).json({ success: false, message: '取消分享失敗' }); }
 });
 
-app.get('/share/view/:token', async (req, res) => {
+app.get('/share/view/file/:token', async (req, res) => {
     try {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
@@ -612,6 +617,21 @@ app.get('/share/view/:token', async (req, res) => {
             res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
         }
     } catch (error) { res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' }); }
+});
+
+app.get('/share/view/folder/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+        const folderInfo = await data.getFolderByShareToken(token);
+        if (folderInfo) {
+            const contents = await data.getFolderContents(folderInfo.id, folderInfo.user_id);
+            res.render('share-folder-view', { folder: folderInfo, contents });
+        } else {
+            res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
+        }
+    } catch (error) { 
+        res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' }); 
+    }
 });
 
 app.get('/share/download/:token', async (req, res) => {
