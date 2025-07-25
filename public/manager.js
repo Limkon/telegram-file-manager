@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderSelect = document.getElementById('folderSelect');
     const uploadNotificationArea = document.getElementById('uploadNotificationArea');
     const dropZone = document.getElementById('dropZone');
+    const dragUploadProgressArea = document.getElementById('dragUploadProgressArea');
+    const dragUploadProgressBar = document.getElementById('dragUploadProgressBar');
 
     // 狀態
     let isMultiSelectMode = false;
@@ -201,14 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('加載資料夾列表失敗', error);
         }
     };
-
-    const uploadFiles = async (files, targetFolderId) => {
+    const uploadFiles = async (files, targetFolderId, isDrag = false) => {
         if (files.length === 0) return;
 
         const oversizedFiles = Array.from(files).filter(file => file.size > MAX_TELEGRAM_SIZE);
         if (oversizedFiles.length > 0) {
             const fileNames = oversizedFiles.map(f => `"${f.name}"`).join(', ');
-            showNotification(`檔案 ${fileNames} 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadModal.style.display === 'flex' ? uploadNotificationArea : null);
+            showNotification(`檔案 ${fileNames} 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', !isDrag ? uploadNotificationArea : null);
             return;
         }
 
@@ -249,23 +250,43 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('overwrite', JSON.stringify(filesToOverwrite));
         
         const captionInput = document.getElementById('uploadCaption');
-        if (captionInput && captionInput.value) {
+        if (captionInput && captionInput.value && !isDrag) {
             formData.append('caption', captionInput.value);
         }
 
-        showNotification('開始上傳...', 'info');
-        uploadModal.style.display = 'none';
+        const progressBar = isDrag ? dragUploadProgressBar : document.getElementById('progressBar');
+        const progressArea = isDrag ? dragUploadProgressArea : document.getElementById('progressArea');
+        
+        progressArea.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
 
+        if (uploadModal.style.display === 'flex' && !isDrag) {
+            uploadForm.querySelector('button[type="submit"]').disabled = true;
+        }
+        
         try {
-            const res = await axios.post('/upload', formData);
+            const res = await axios.post('/upload', formData, {
+                onUploadProgress: p => {
+                    const percent = Math.round((p.loaded * 100) / p.total);
+                    progressBar.style.width = percent + '%';
+                    progressBar.textContent = percent + '%';
+                }
+            });
             if (res.data.success) {
                 showNotification('上傳成功！', 'success');
                 loadFolderContents(currentFolderId);
             } else {
-                showNotification('上傳失敗', 'error');
+                showNotification('上傳失敗', 'error', !isDrag ? uploadNotificationArea : null);
             }
         } catch (error) {
-            showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
+            showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', !isDrag ? uploadNotificationArea : null);
+        } finally {
+            if (uploadModal.style.display === 'flex' && !isDrag) {
+                uploadForm.querySelector('button[type="submit"]').disabled = false;
+            }
+            setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
+            if (isDrag) uploadModal.style.display = 'none';
         }
     };
     
@@ -287,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const files = fileInput.files;
             const targetFolderId = folderSelect.value;
             if (files.length > 0) {
-                uploadFiles(files, targetFolderId);
+                uploadFiles(files, targetFolderId, false);
             } else {
                 showNotification('請選擇要上傳的檔案。', 'error', uploadNotificationArea);
             }
@@ -313,11 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                uploadFiles(files, currentFolderId);
+                uploadFiles(files, currentFolderId, true);
             }
         });
     }
     
+    // ... (剩下的程式碼與之前相同) ...
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
