@@ -53,9 +53,8 @@ async function remove(files, userId) {
     return { success: true };
 }
 
-async function getUrl(filePath, res) {
-    // This is handled by a dedicated route in server.js now
-    return `/local-files/${path.basename(path.dirname(filePath))}/${path.basename(filePath)}`;
+async function getUrl(file_id, userId) {
+    return `/local-files/${userId}/${path.basename(file_id)}`;
 }
 
 module.exports = { upload, remove, getUrl, type: 'local' };
