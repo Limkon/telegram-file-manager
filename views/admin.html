@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理後台</title>
+    <link rel="stylesheet" href="/manager.css">
+    <style>
+        .setting-card {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            margin-top: 20px;
+        }
+        .setting-card h2 {
+            margin-top: 0;
+        }
+        .setting-card select, .setting-card button {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+        .setting-card button {
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <h1>管理後台</h1>
+            <a href="/" class="upload-link-btn"><i class="fas fa-arrow-left"></i> 返回文件管理器</a>
+        </header>
+
+        <div class="setting-card">
+            <h2>儲存設定</h2>
+            <p>目前儲存模式: <b id="current-mode">加載中...</b></p>
+            <p>警告：切換儲存模式不會遷移現有檔案。切換後，舊模式下的檔案將無法在管理器中存取。</p>
+            <hr>
+            <label for="storage-select">選擇新的儲存模式：</label>
+            <select id="storage-select">
+                <option value="telegram">Telegram</option>
+                <option value="local">本地伺服器</option>
+            </select>
+            <button id="save-btn">儲存設定</button>
+            <p id="save-status" style="color: green;"></p>
+        </div>
+    </div>
+    <script src="/vendor/axios/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentModeEl = document.getElementById('current-mode');
+            const storageSelect = document.getElementById('storage-select');
+            const saveBtn = document.getElementById('save-btn');
+            const saveStatus = document.getElementById('save-status');
+
+            async function loadCurrentMode() {
+                try {
+                    const res = await axios.get('/api/admin/storage-mode');
+                    currentModeEl.textContent = res.data.mode === 'local' ? '本地伺服器' : 'Telegram';
+                    storageSelect.value = res.data.mode;
+                } catch (error) {
+                    currentModeEl.textContent = '讀取失敗';
+                }
+            }
+
+            saveBtn.addEventListener('click', async () => {
+                const newMode = storageSelect.value;
+                if (!confirm(`確定要將儲存模式切換為 "${newMode}" 嗎？\n此操作需要重新啟動伺服器才能生效。`)) {
+                    return;
+                }
+                try {
+                    const res = await axios.post('/api/admin/storage-mode', { mode: newMode });
+                    if (res.data.success) {
+                        saveStatus.textContent = res.data.message;
+                        loadCurrentMode();
+                    }
+                } catch (error) {
+                    saveStatus.textContent = '儲存失敗！';
+                }
+            });
+
+            loadCurrentMode();
+        });
+    </script>
+</body>
+</html>
