@@ -7,7 +7,7 @@ const axios = require('axios');
 const archiver = require('archiver');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
-const db = require('./database.js'); // 直接引入 db 以便查詢使用者根目錄
+const db = require('./database.js'); 
 
 const data = require('./data.js');
 const storageManager = require('./storage'); 
@@ -100,7 +100,6 @@ app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirn
 app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 app.get('/admin', requireAdmin, (req, res) => res.sendFile(path.join(__dirname, 'views/admin.html')));
 
-// --- 本地檔案服務路由 ---
 app.get('/local-files/:userId/:fileId', requireLogin, (req, res) => {
     if (String(req.params.userId) !== String(req.session.userId) && !req.session.isAdmin) {
         return res.status(403).send("權限不足");
@@ -122,7 +121,7 @@ app.get('/api/admin/storage-mode', requireAdmin, (req, res) => {
 app.post('/api/admin/storage-mode', requireAdmin, (req, res) => {
     const { mode } = req.body;
     if (storageManager.setStorageMode(mode)) {
-        res.json({ success: true, message: '設定已儲存，重新啟動伺服器後生效。' });
+        res.json({ success: true, message: '設定已儲存。' });
     } else {
         res.status(400).json({ success: false, message: '無效的模式' });
     }
@@ -241,8 +240,10 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const storage = storageManager.getStorage();
     if (!folderId) return res.status(400).json({ success: false, message: '無效的資料夾 ID。' });
     
-    // 檢查是否為根目錄
     const folderInfo = await data.getFolderPath(folderId, userId);
+    if (!folderInfo || folderInfo.length === 0) {
+        return res.status(404).json({ success: false, message: '找不到指定的資料夾。' });
+    }
     if (folderInfo.length === 1 && folderInfo[0].id === folderId) {
         return res.status(400).json({ success: false, message: '無法刪除根目錄。' });
     }
@@ -272,6 +273,77 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     res.json(result);
 });
 
-// ... (其他路由如分享、下載等，為了簡潔省略，但您需要為每個資料庫操作都加上 userId)
+app.post('/share', requireLogin, async (req, res) => {
+    const { messageId, expiresIn } = req.body;
+    const result = await data.createShareLink(parseInt(messageId, 10), expiresIn, req.session.userId);
+    if (result.success) {
+        const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${result.token}`;
+        res.json({ success: true, url: shareUrl });
+    } else {
+        res.status(500).json(result);
+    }
+});
+
+app.get('/api/shared-files', requireLogin, async (req, res) => {
+    const files = await data.getActiveSharedFiles(req.session.userId);
+    const fullUrlFiles = files.map(file => ({
+        ...file,
+        share_url: `${req.protocol}://${req.get('host')}/share/view/${file.share_token}`
+    }));
+    res.json(fullUrlFiles);
+});
+
+app.post('/api/cancel-share', requireLogin, async (req, res) => {
+    const { messageId } = req.body;
+    const result = await data.cancelShare(parseInt(messageId, 10), req.session.userId);
+    res.json(result);
+});
+
+app.get('/share/view/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+        const fileInfo = await data.getFileByShareToken(token);
+        if (fileInfo) {
+            const downloadUrl = `/share/download/${token}`;
+            let textContent = null;
+            if (fileInfo.mimetype && fileInfo.mimetype.startsWith('text/')) {
+                const storage = storageManager.getStorage();
+                if(storage.type === 'telegram') {
+                    const link = await storage.getUrl(fileInfo.file_id);
+                    if (link) {
+                        const response = await axios.get(link, { responseType: 'text' });
+                        textContent = response.data;
+                    }
+                } else {
+                    textContent = await fs.readFile(fileInfo.file_id, 'utf-8');
+                }
+            }
+            res.render('share-view', { file: fileInfo, downloadUrl, textContent });
+        } else {
+            res.status(404).render('share-error', { message: '此分享連結無效或已過期。' });
+        }
+    } catch (error) { res.status(500).render('share-error', { message: '處理分享請求時發生錯誤。' }); }
+});
+
+app.get('/share/download/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+        const fileInfo = await data.getFileByShareToken(token);
+        if (fileInfo && fileInfo.file_id) {
+            const storage = storageManager.getStorage();
+            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileInfo.fileName)}`);
+            if (storage.type === 'telegram') {
+                const link = await storage.getUrl(fileInfo.file_id);
+                if (link) {
+                    const response = await axios({ method: 'get', url: link, responseType: 'stream' });
+                    response.data.pipe(res);
+                } else { res.status(404).send('無法獲取文件鏈接'); }
+            } else {
+                res.sendFile(fileInfo.file_id);
+            }
+        } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
+    } catch (error) { res.status(500).send('下載失敗'); }
+});
+
 
 app.listen(PORT, () => console.log(`✅ 服務器已在 http://localhost:${PORT} 上運行`));
