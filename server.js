@@ -55,6 +55,7 @@ function requireAdmin(req, res, next) {
 // --- 路由 ---
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'views/login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'views/register.html')));
+app.get('/editor', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/editor.html'))); // 新增編輯器頁面路由
 
 app.post('/login', async (req, res) => {
     try {
@@ -149,6 +150,57 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     }
     res.json({ success: true, results });
 });
+
+// --- *** 新增部分 開始 *** ---
+app.post('/api/text-file', requireLogin, async (req, res) => {
+    const { mode, fileId, folderId, fileName, content } = req.body;
+    const userId = req.session.userId;
+    const storage = storageManager.getStorage();
+
+    if (!fileName || !fileName.endsWith('.txt')) {
+        return res.status(400).json({ success: false, message: '檔名無效或不是 .txt 檔案' });
+    }
+
+    try {
+        const contentBuffer = Buffer.from(content, 'utf8');
+
+        if (mode === 'edit' && fileId) {
+            // "更新"操作：先刪除舊檔案
+            const filesToDelete = await data.getFilesByIds([fileId], userId);
+            if (filesToDelete.length > 0) {
+                await storage.remove(filesToDelete, userId);
+                 // 在同一個資料夾重新上傳
+                const result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, filesToDelete[0].folder_id);
+                res.json(result);
+            } else {
+                res.status(404).json({ success: false, message: '找不到要編輯的原始檔案' });
+            }
+        } else if (mode === 'create' && folderId) {
+            // "建立"操作：直接上傳
+            const result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, folderId);
+            res.json(result);
+        } else {
+            res.status(400).json({ success: false, message: '請求參數無效' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: '伺服器內部錯誤' });
+    }
+});
+
+app.get('/api/file-info/:id', requireLogin, async (req, res) => {
+    try {
+        const fileId = parseInt(req.params.id, 10);
+        const [fileInfo] = await data.getFilesByIds([fileId], req.session.userId);
+        if (fileInfo) {
+            res.json(fileInfo);
+        } else {
+            res.status(404).json({ success: false, message: '找不到檔案資訊' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: '獲取檔案資訊失敗' });
+    }
+});
+// --- *** 新增部分 結束 *** ---
 
 app.post('/api/check-existence', requireLogin, async (req, res) => {
     const { fileNames, folderId } = req.body;
@@ -255,7 +307,6 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     res.json({ success: true });
 });
 
-// --- *** 修改部分 開始 *** ---
 app.post('/rename', requireLogin, async (req, res) => {
     try {
         const { id, newName, type } = req.body;
@@ -277,7 +328,6 @@ app.post('/rename', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '重命名失敗' }); 
     }
 });
-// --- *** 修改部分 結束 *** ---
 
 app.post('/delete-multiple', requireLogin, async (req, res) => {
     const { messageIds } = req.body;
