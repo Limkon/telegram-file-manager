@@ -55,7 +55,7 @@ function requireAdmin(req, res, next) {
 // --- 路由 ---
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'views/login.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'views/register.html')));
-app.get('/editor', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/editor.html'))); // 新增編輯器頁面路由
+app.get('/editor', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/editor.html')));
 
 app.post('/login', async (req, res) => {
     try {
@@ -151,7 +151,6 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
-// --- *** 新增部分 開始 *** ---
 app.post('/api/text-file', requireLogin, async (req, res) => {
     const { mode, fileId, folderId, fileName, content } = req.body;
     const userId = req.session.userId;
@@ -165,18 +164,15 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
         const contentBuffer = Buffer.from(content, 'utf8');
 
         if (mode === 'edit' && fileId) {
-            // "更新"操作：先刪除舊檔案
             const filesToDelete = await data.getFilesByIds([fileId], userId);
             if (filesToDelete.length > 0) {
                 await storage.remove(filesToDelete, userId);
-                 // 在同一個資料夾重新上傳
                 const result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, filesToDelete[0].folder_id);
                 res.json(result);
             } else {
                 res.status(404).json({ success: false, message: '找不到要編輯的原始檔案' });
             }
         } else if (mode === 'create' && folderId) {
-            // "建立"操作：直接上傳
             const result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, folderId);
             res.json(result);
         } else {
@@ -200,7 +196,6 @@ app.get('/api/file-info/:id', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '獲取檔案資訊失敗' });
     }
 });
-// --- *** 新增部分 結束 *** ---
 
 app.post('/api/check-existence', requireLogin, async (req, res) => {
     const { fileNames, folderId } = req.body;
@@ -235,6 +230,23 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '檢查名稱衝突時出錯。' });
     }
 });
+
+// --- *** 修改部分 開始 *** ---
+app.get('/api/search', requireLogin, async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query) return res.status(400).json({ success: false, message: '需要提供搜尋關鍵字。' });
+        
+        // 修正：將 userId 從 session 傳遞給 searchFiles 函式
+        const contents = await data.searchFiles(query, req.session.userId); 
+        
+        const path = [{ id: null, name: `搜尋結果: "${query}"` }];
+        res.json({ contents, path });
+    } catch (error) { 
+        res.status(500).json({ success: false, message: '搜尋失敗。' }); 
+    }
+});
+// --- *** 修改部分 結束 *** ---
 
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
@@ -341,8 +353,6 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     res.json(result);
 });
 
-// --- **以下為修正後的檔案存取相關路由** ---
-
 app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
     try {
         const messageId = parseInt(req.params.message_id, 10);
@@ -376,7 +386,7 @@ app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
                     const response = await axios({ method: 'get', url: link, responseType: 'stream' });
                     response.data.pipe(res);
                 } else { res.status(404).send('無法獲取文件鏈接'); }
-            } else { // 本地儲存
+            } else {
                 if (fs.existsSync(fileInfo.file_id)) {
                     res.download(fileInfo.file_id, fileInfo.fileName);
                 } else {
@@ -402,7 +412,7 @@ app.get('/file/content/:message_id', requireLogin, async (req, res) => {
                     const response = await axios.get(link, { responseType: 'text' });
                     res.send(response.data);
                 } else { res.status(404).send('無法獲取文件鏈接'); }
-            } else { // 本地儲存
+            } else {
                 if (fs.existsSync(fileInfo.file_id)) {
                     const content = await fs.promises.readFile(fileInfo.file_id, 'utf-8');
                     res.send(content);
@@ -449,7 +459,7 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
                     const response = await axios({ url: link, method: 'GET', responseType: 'stream' });
                     archive.append(response.data, { name: file.path });
                 }
-            } else { // 本地儲存
+            } else {
                 if (fs.existsSync(file.file_id)) {
                     archive.file(file.file_id, { name: file.path });
                 }
@@ -462,7 +472,6 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
 });
 
 
-// --- 分享相關路由 ---
 app.post('/share', requireLogin, async (req, res) => {
     const { messageId, expiresIn } = req.body;
     const result = await data.createShareLink(parseInt(messageId, 10), expiresIn, req.session.userId);
