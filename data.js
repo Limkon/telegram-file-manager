@@ -54,6 +54,35 @@ async function getFilesRecursive(folderId, currentPath = '') {
     return allFiles;
 }
 
+async function findOrCreateFolderByPath(startFolderId, folderPath) {
+    const pathParts = folderPath.split('/').filter(p => p);
+    let currentFolderId = startFolderId;
+
+    for (const part of pathParts) {
+        const sqlFind = `SELECT id FROM folders WHERE parent_id = ? AND name = ?`;
+        const found = await new Promise((resolve, reject) => {
+            db.get(sqlFind, [currentFolderId, part], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (found) {
+            currentFolderId = found.id;
+        } else {
+            const sqlCreate = `INSERT INTO folders (name, parent_id) VALUES (?, ?)`;
+            const newFolderId = await new Promise((resolve, reject) => {
+                db.run(sqlCreate, [part, currentFolderId], function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+            });
+            currentFolderId = newFolderId;
+        }
+    }
+    return currentFolderId;
+}
+
 
 function getFolderPath(folderId) {
     let path = [];
@@ -231,4 +260,4 @@ function cancelShare(messageId) {
         });
     });
 }
-module.exports = { searchFiles, getFolderContents, getFilesRecursive, getFolderPath, createFolder, getAllFolders, deleteFolderRecursive, addFile, getFilesByIds, moveItems, getFileByShareToken, createShareLink, getActiveSharedFiles, cancelShare, renameFile, deleteFilesByIds, };
+module.exports = { searchFiles, getFolderContents, getFilesRecursive, getFolderPath, createFolder, getAllFolders, deleteFolderRecursive, addFile, getFilesByIds, moveItems, getFileByShareToken, createShareLink, getActiveSharedFiles, cancelShare, renameFile, deleteFilesByIds, findOrCreateFolderByPath };
