@@ -576,6 +576,7 @@ app.post('/share', requireLogin, async (req, res) => {
             res.status(404).json(result); 
         }
     } catch (error) {
+        console.error("Share link creation error:", error);
         res.status(500).json({ success: false, message: '在伺服器上建立分享連結時發生錯誤。' });
     }
 });
@@ -605,7 +606,7 @@ app.get('/share/view/file/:token', async (req, res) => {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
         if (fileInfo) {
-            const downloadUrl = `/share/download/${token}`;
+            const downloadUrl = `/share/download/file/${token}`;
             let textContent = null;
             if (fileInfo.mimetype && fileInfo.mimetype.startsWith('text/')) {
                 const storage = storageManager.getStorage();
@@ -641,7 +642,7 @@ app.get('/share/view/folder/:token', async (req, res) => {
     }
 });
 
-app.get('/share/download/:token', async (req, res) => {
+app.get('/share/download/file/:token', async (req, res) => {
     try {
         const token = req.params.token;
         const fileInfo = await data.getFileByShareToken(token);
