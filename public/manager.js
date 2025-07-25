@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
     const shareModal = document.getElementById('shareModal');
     const uploadModal = document.getElementById('uploadModal');
-    const showUploadModalBtn = document.getElementById('showUploadModalBtn');
+    const uploadFilesBtn = document.getElementById('uploadFilesBtn');
+    const uploadFolderBtn = document.getElementById('uploadFolderBtn');
     const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadNotificationArea = document.getElementById('uploadNotificationArea');
     const mainContainer = document.getElementById('main-container');
     const dropOverlay = document.getElementById('drop-overlay');
+    const uploadModalTitle = document.getElementById('uploadModalTitle');
 
     // 狀態
     let isMultiSelectMode = false;
@@ -208,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const handleFileUpload = async (files) => {
+        if (!files || files.length === 0) return;
         filesToUpload = Array.from(files);
         await loadFoldersForUpload();
         folderSelect.value = currentFolderId;
@@ -217,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         filesToUpload.forEach(file => {
             const listItem = document.createElement('li');
+            // 如果是資料夾上傳，webkitRelativePath 會有值
             listItem.textContent = file.webkitRelativePath || file.name;
             fileListContainer.appendChild(listItem);
         });
@@ -226,12 +230,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 事件監聽 ---
     if (uploadForm) {
-        fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files));
+        fileInput.addEventListener('change', (e) => {
+            handleFileUpload(e.target.files);
+            // 每次使用後重置 input，以便下次可以選擇相同的文件/文件夾
+            e.target.value = '';
+        });
 
         uploadForm.onsubmit = async function (e) {
             e.preventDefault();
             if (filesToUpload.length === 0) { 
-                showNotification('請選擇文件或文件夾', 'error', uploadNotificationArea); 
+                showNotification('請選擇或拖拽文件/文件夾', 'error', uploadNotificationArea); 
                 return; 
             }
             
@@ -276,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 submitButton.disabled = false;
                 submitButton.textContent = '上傳';
+                filesToUpload = []; // 清空待上傳列表
                 setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
             }
         };
@@ -292,7 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
         dropOverlay.addEventListener('dragleave', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            dropOverlay.style.display = 'none';
+            if (e.relatedTarget === null || !mainContainer.contains(e.relatedTarget)) {
+               dropOverlay.style.display = 'none';
+            }
         });
 
         dropOverlay.addEventListener('dragover', (e) => {
@@ -306,25 +317,38 @@ document.addEventListener('DOMContentLoaded', () => {
             dropOverlay.style.display = 'none';
             
             const items = e.dataTransfer.items;
-            const files = [];
+            const allFiles = [];
+
+            const getFile = (entry) => {
+                return new Promise(resolve => entry.file(resolve));
+            };
+
+            const getEntries = (reader) => {
+                return new Promise(resolve => reader.readEntries(resolve));
+            };
 
             const processEntry = async (entry) => {
                 if (entry.isFile) {
-                    return new Promise(resolve => entry.file(file => {
-                        file.webkitRelativePath = entry.fullPath.substring(1);
-                        resolve(file);
-                    }));
+                    const file = await getFile(entry);
+                    // 確保 webkitRelativePath 存在且正確
+                    file.webkitRelativePath = entry.fullPath.startsWith('/') ? entry.fullPath.substring(1) : entry.fullPath;
+                    allFiles.push(file);
                 } else if (entry.isDirectory) {
                     const reader = entry.createReader();
-                    const entries = await new Promise(resolve => reader.readEntries(resolve));
-                    const filePromises = entries.map(processEntry);
-                    return Promise.all(filePromises);
+                    let entries;
+                    do {
+                        entries = await getEntries(reader);
+                        for (const subEntry of entries) {
+                            await processEntry(subEntry);
+                        }
+                    } while (entries.length > 0);
                 }
             };
             
-            const filePromises = Array.from(items).map(item => processEntry(item.webkitGetAsEntry()));
-            const allFilesNested = await Promise.all(filePromises);
-            handleFileUpload(allFilesNested.flat(Infinity));
+            const entryPromises = Array.from(items).map(item => processEntry(item.webkitGetAsEntry()));
+            await Promise.all(entryPromises);
+            
+            handleFileUpload(allFiles);
         });
     }
 
@@ -425,9 +449,18 @@ document.addEventListener('DOMContentLoaded', () => {
             updateActionBar();
         });
     }
-    if (showUploadModalBtn) {
-        showUploadModalBtn.addEventListener('click', () => {
+
+    if (uploadFilesBtn) {
+        uploadFilesBtn.addEventListener('click', () => {
             fileInput.removeAttribute('webkitdirectory');
+            uploadModalTitle.textContent = '上傳文件';
+            fileInput.click();
+        });
+    }
+    if (uploadFolderBtn) {
+        uploadFolderBtn.addEventListener('click', () => {
+            fileInput.setAttribute('webkitdirectory', '');
+            uploadModalTitle.textContent = '上傳文件夾';
             fileInput.click();
         });
     }
