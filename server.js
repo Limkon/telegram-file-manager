@@ -21,7 +21,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-strong-random-secret-here-please-change',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } // 7 天
+  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
 }));
 
 app.set('view engine', 'ejs');
@@ -89,6 +89,18 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// --- *** 新增部分 開始 *** ---
+app.get('/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.redirect('/');
+        }
+        res.clearCookie('connect.sid');
+        res.redirect('/login');
+    });
+});
+// --- *** 新增部分 結束 *** ---
+
 app.get('/', requireLogin, (req, res) => {
     db.get("SELECT id FROM folders WHERE user_id = ? AND parent_id IS NULL", [req.session.userId], (err, rootFolder) => {
         if (err || !rootFolder) {
@@ -115,6 +127,23 @@ app.get('/local-files/:userId/:fileId', requireLogin, (req, res) => {
 
 
 // --- API 接口 ---
+// --- *** 新增部分 開始 *** ---
+app.post('/api/user/change-password', requireLogin, async (req, res) => {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 4) {
+        return res.status(400).json({ success: false, message: '密碼長度至少需要 4 個字元。' });
+    }
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        await data.changeUserPassword(req.session.userId, hashedPassword);
+        res.json({ success: true, message: '密碼修改成功。' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '修改密碼失敗。' });
+    }
+});
+// --- *** 新增部分 結束 *** ---
+
 app.get('/api/admin/storage-mode', requireAdmin, (req, res) => {
     res.json({ mode: storageManager.readConfig().storageMode });
 });
@@ -127,6 +156,62 @@ app.post('/api/admin/storage-mode', requireAdmin, (req, res) => {
         res.status(400).json({ success: false, message: '無效的模式' });
     }
 });
+
+// --- *** 新增部分 開始 *** ---
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+    try {
+        const users = await data.listNormalUsers();
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ success: false, message: '獲取使用者列表失敗。' });
+    }
+});
+
+app.post('/api/admin/add-user', requireAdmin, async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password || password.length < 4) {
+        return res.status(400).json({ success: false, message: '使用者名稱和密碼為必填項，且密碼長度至少 4 個字元。' });
+    }
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const newUser = await data.createUser(username, hashedPassword);
+        await data.createFolder('/', null, newUser.id);
+        res.json({ success: true, user: newUser });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '建立使用者失敗，可能使用者名稱已被使用。' });
+    }
+});
+
+app.post('/api/admin/change-password', requireAdmin, async (req, res) => {
+    const { userId, newPassword } = req.body;
+    if (!userId || !newPassword || newPassword.length < 4) {
+        return res.status(400).json({ success: false, message: '使用者 ID 和新密碼為必填項，且密碼長度至少 4 個字元。' });
+    }
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        await data.changeUserPassword(userId, hashedPassword);
+        res.json({ success: true, message: '密碼修改成功。' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '修改密碼失敗。' });
+    }
+});
+
+app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) {
+        return res.status(400).json({ success: false, message: '缺少使用者 ID。' });
+    }
+    try {
+        await data.deleteUser(userId);
+        res.json({ success: true, message: '使用者已刪除。' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '刪除使用者失敗。' });
+    }
+});
+// --- *** 新增部分 結束 *** ---
+
 
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
@@ -231,13 +316,11 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
     }
 });
 
-// --- *** 修改部分 開始 *** ---
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
         if (!query) return res.status(400).json({ success: false, message: '需要提供搜尋關鍵字。' });
         
-        // 修正：將 userId 從 session 傳遞給 searchFiles 函式
         const contents = await data.searchFiles(query, req.session.userId); 
         
         const path = [{ id: null, name: `搜尋結果: "${query}"` }];
@@ -246,7 +329,6 @@ app.get('/api/search', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '搜尋失敗。' }); 
     }
 });
-// --- *** 修改部分 結束 *** ---
 
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
