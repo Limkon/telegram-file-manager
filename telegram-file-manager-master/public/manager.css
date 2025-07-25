@@ -1,0 +1,218 @@
+:root {
+  --primary-color: #007bff;
+  --background-color: #f8f9fa;
+  --card-background: #ffffff;
+  --text-color: #212529;
+  --border-color: #dee2e6;
+  --shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--background-color);
+  margin: 0;
+  padding: 20px;
+  color: var(--text-color);
+}
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.upload-link-btn {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px; /* 明確定義基礎字體大小 */
+}
+.upload-link-btn:hover {
+  background-color: #0069d9;
+}
+
+/* 麵包屑 */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    background-color: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+.breadcrumb a, .breadcrumb span {
+    text-decoration: none;
+    color: var(--primary-color);
+    font-weight: 500;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb span { color: #6c757d; font-weight: normal; }
+.breadcrumb .separator { margin: 0 10px; color: #6c757d; }
+
+/* 項目網格 */
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding-bottom: 100px;
+}
+.item-card {
+    background: var(--card-background);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+.item-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+.item-card.selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5);
+}
+.item-icon {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f1f3f5;
+    font-size: 64px;
+    overflow: hidden;
+}
+.item-icon .fa-folder { color: #ffc107; }
+.item-icon i.fas { color: #adb5bd; }
+.item-icon img { width: 100%; height: 100%; object-fit: cover; }
+.item-info {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    background-color: #fff;
+}
+.item-info h5 {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+/* 浮動操作欄 */
+.action-bar {
+  position: fixed;
+  bottom: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 700px;
+  background-color: #212529;
+  color: white;
+  border-radius: 12px;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+  transition: bottom 0.3s ease-in-out;
+  z-index: 1000;
+}
+.action-bar.visible { bottom: 20px; }
+.action-bar #selectAllBtn { background: #495057; color: white; border: none; padding: 8px 12px; margin-right: 15px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
+.action-bar #selectionCount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+.action-bar .actions { display: flex; align-items: center; }
+.action-bar .actions button { background: #495057; color: white; border: none; padding: 8px 12px; margin-left: 10px; border-radius: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; transition: background-color 0.2s; }
+.action-bar .actions button:disabled { background: #343a40; color: #6c757d; cursor: not-allowed; }
+.action-bar .actions button:not(:disabled):hover { background: #5a6268; }
+.action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
+.action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
+
+/* 模態框 */
+.modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+.modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; }
+.modal-content img, .modal-content video { width: auto; height: auto; max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
+.close-button { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+
+
+/* --- 手機端優化 (當螢幕寬度小於 768px 時生效) --- */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .main-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .main-header h1 {
+        font-size: 24px;
+    }
+
+    /* --- *** 關鍵修正：使用更明確的選擇器並縮小尺寸 *** --- */
+    .main-header .upload-link-btn {
+        padding: 8px 10px;
+        font-size: 13px;
+        gap: 6px;
+    }
+    
+    .breadcrumb {
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+
+    .item-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 15px;
+    }
+    
+    .item-icon {
+        font-size: 48px;
+    }
+
+    .item-info {
+        padding: 8px;
+    }
+
+    .item-info h5 {
+        font-size: 12px;
+    }
+
+    .action-bar {
+        padding: 10px;
+        width: 95%;
+        bottom: -120px;
+    }
+     .action-bar.visible { bottom: 10px; }
+
+    .action-bar #selectionCount {
+        font-size: 12px;
+    }
+    
+    .action-bar .actions button {
+        padding: 8px;
+        margin-left: 5px;
+        font-size: 12px;
+    }
+    .action-bar .actions button .button-text,
+    .main-header .upload-link-btn .button-text {
+        display: none;
+    }
+}

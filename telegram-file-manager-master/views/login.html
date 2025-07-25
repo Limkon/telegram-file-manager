@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="title">登錄 - 文件管理器</title>
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --background-color: #f4f7f6;
+      --card-background: #ffffff;
+      --text-color: #333;
+      --input-border-color: #ccc;
+      --button-hover-color: #0056b3;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--background-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: var(--text-color);
+    }
+    .login-container {
+      background-color: var(--card-background);
+      padding: 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .login-container h2 {
+      margin-bottom: 24px;
+      font-size: 24px;
+      color: var(--text-color);
+    }
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--input-border-color);
+      border-radius: 4px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    }
+    button[type="submit"] {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: var(--primary-color);
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button[type="submit"]:hover {
+      background-color: var(--button-hover-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2 data-i18n="login_title">登錄您的文件管理器</h2>
+    <form action="/login" method="post">
+      <div class="form-group">
+        <label for="username" data-i18n="username_label">用戶名</label>
+        <input id="username" name="username" placeholder="請輸入用戶名" required>
+      </div>
+      <div class="form-group">
+        <label for="password" data-i18n="password_label">密碼</label>
+        <input id="password" name="password" type="password" placeholder="請輸入密碼" required>
+      </div>
+      <button type="submit" data-i18n="login_button">登錄</button>
+    </form>
+  </div>
+
+  <script>
+    const translations = {
+      en: {
+        title: "Login - File Manager",
+        login_title: "Login to Your File Manager",
+        username_label: "Username",
+        password_label: "Password",
+        login_button: "Login",
+        username_placeholder: "Enter username",
+        password_placeholder: "Enter password"
+      },
+      zh: {
+        title: "登錄 - 文件管理器",
+        login_title: "登錄您的文件管理器",
+        username_label: "用戶名",
+        password_label: "密碼",
+        login_button: "登錄",
+        username_placeholder: "請輸入用戶名",
+        password_placeholder: "請輸入密碼"
+      }
+    };
+
+    const lang = navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
+    const t = translations[lang];
+
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (t[key]) el.textContent = t[key];
+    });
+
+    // 替换 placeholder
+    document.getElementById("username").placeholder = t.username_placeholder;
+    document.getElementById("password").placeholder = t.password_placeholder;
+
+    // 设置标题
+    document.title = t.title;
+  </script>
+</body>
+</html>
