@@ -87,6 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         } catch (error) {
+            if (error.response && error.response.status === 401) {
+                window.location.href = '/login';
+            }
             itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
@@ -106,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const renderBreadcrumb = (path) => {
         breadcrumb.innerHTML = '';
+        if(!path || path.length === 0) return;
         path.forEach((p, index) => {
             if (index > 0) breadcrumb.innerHTML += '<span class="separator">/</span>';
             if (p.id === null) {
@@ -136,15 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
         card.dataset.id = item.id;
         card.dataset.type = item.type;
         card.dataset.name = item.name;
-        const fullFile = currentFolderContents.files.find(f => f.id === item.id);
+        
         let iconHtml = '';
-        if (item.type === 'file' && fullFile && fullFile.thumb_file_id) {
-            iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
-        } else if (item.type === 'folder') {
+        if (item.type === 'file') {
+            const fullFile = currentFolderContents.files.find(f => f.id === item.id);
+            if (fullFile.storage_type === 'telegram' && fullFile.thumb_file_id) {
+                iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
+            } else if (fullFile.mimetype && fullFile.mimetype.startsWith('image/')) {
+                 iconHtml = `<img src="/download/proxy/${item.id}" alt="圖片" loading="lazy">`;
+            } else {
+                 iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
+            }
+        } else { // folder
             iconHtml = '<i class="fas fa-folder"></i>';
-        } else {
-            iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
         }
+        
         card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name}</h5></div>`;
         if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
@@ -179,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     const loadFoldersForUpload = async () => {
-        if (foldersLoaded) return;
+        foldersLoaded = false;
         try {
             const res = await axios.get('/api/folders');
             const folders = res.data;
@@ -195,9 +205,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 option.value = node.id;
                 option.textContent = prefix + node.name;
                 folderSelect.appendChild(option);
-                node.children.forEach(child => buildOptions(child, prefix + '　'));
+                node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildOptions(child, prefix + '　'));
             };
-            tree.forEach(buildOptions);
+            tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(buildOptions);
             foldersLoaded = true;
         } catch (error) {
             console.error('加載資料夾列表失敗', error);
@@ -364,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
             window.history.pushState(null, '', '/');
-            loadFolderContents(1);
+            window.location.href = '/';
         });
     }
     if (itemGrid) {
@@ -405,8 +415,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
-            const folderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
-            loadFolderContents(folderId);
+            const pathParts = window.location.pathname.split('/');
+            const folderId = parseInt(pathParts[pathParts.length - 1], 10);
+            if (!isNaN(folderId)) {
+                loadFolderContents(folderId);
+            }
         }
     });
     if (createFolderBtn) {
@@ -567,24 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
             try {
-                const res = await axios.get('/api/folders');
-                const folders = res.data;
-                const folderMap = new Map(folders.map(f => [f.id, { ...f, children: [] }]));
-                const tree = [];
-                folderMap.forEach(f => {
-                    if (f.parent_id && folderMap.has(f.parent_id)) folderMap.get(f.parent_id).children.push(f);
-                    else tree.push(f);
-                });
-                folderTree.innerHTML = '';
-                const buildTree = (node, prefix = '') => {
-                    const item = document.createElement('div');
-                    item.className = 'folder-item';
-                    item.dataset.folderId = node.id;
-                    item.textContent = prefix + node.name;
-                    folderTree.appendChild(item);
-                    node.children.forEach(child => buildTree(child, prefix + '　'));
-                };
-                tree.forEach(buildTree);
+                await loadFoldersForUpload();
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
@@ -690,7 +686,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
     
     if (document.getElementById('itemGrid')) {
-        const initialFolderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
-        loadFolderContents(initialFolderId);
+        const pathParts = window.location.pathname.split('/');
+        const folderId = parseInt(pathParts[pathParts.length - 1], 10);
+        if (!isNaN(folderId)) {
+            loadFolderContents(folderId);
+        } else {
+            window.location.href = '/'; // 如果 URL 無效，重定向到首頁
+        }
     }
 });
