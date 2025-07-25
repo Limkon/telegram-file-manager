@@ -148,6 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
             } else if (fullFile.mimetype && fullFile.mimetype.startsWith('image/')) {
                  iconHtml = `<img src="/download/proxy/${item.id}" alt="圖片" loading="lazy">`;
+            // --- *** 新增部分 開始 *** ---
+            } else if (fullFile.mimetype && fullFile.mimetype.startsWith('video/')) {
+                // 對於本地影片，直接使用 video 標籤來讓瀏覽器產生預覽
+                iconHtml = `<video src="/download/proxy/${item.id}#t=0.1" preload="metadata" muted></video>`;
+            // --- *** 新增部分 結束 *** ---
             } else {
                  iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
             }
@@ -200,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 else tree.push(f);
             });
             
-            // For Upload Select
             folderSelect.innerHTML = '';
             const buildOptions = (node, prefix = '') => {
                 const option = document.createElement('option');
@@ -521,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
              const newName = prompt('請輸入新的名稱:', item.name);
              if (newName && newName.trim() && newName !== item.name) {
                  try {
-                    // --- *** 修改部分 *** ---
                     await axios.post('/rename', { 
                         id: id, 
                         newName: newName.trim(),
@@ -584,7 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
             try {
-                // --- *** 修改部分 *** ---
                 const res = await axios.get('/api/folders');
                 const folders = res.data;
                 folderTree.innerHTML = '';
