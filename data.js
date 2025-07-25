@@ -1,8 +1,8 @@
 const db = require('./database.js');
 const crypto = require('crypto');
-const path = require('path'); // --- *** 關鍵修正 1：引入 Node.js 的 path 模組 *** ---
+const path = require('path');
 
-// --- 搜尋檔案 ---
+// --- 檔案搜尋 ---
 function searchFiles(query) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
@@ -40,14 +40,12 @@ async function getFilesRecursive(folderId, currentPath = '') {
     const sqlFiles = "SELECT * FROM files WHERE folder_id = ?";
     const files = await new Promise((res, rej) => db.all(sqlFiles, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const file of files) {
-        // --- *** 關鍵修正 2：使用正確的 path.join *** ---
         allFiles.push({ ...file, path: path.join(currentPath, file.fileName) });
     }
 
     const sqlFolders = "SELECT id, name FROM folders WHERE parent_id = ?";
     const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const subFolder of subFolders) {
-        // --- *** 關鍵修正 3：使用正確的 path.join *** ---
         const nestedFiles = await getFilesRecursive(subFolder.id, path.join(currentPath, subFolder.name));
         allFiles.push(...nestedFiles);
     }
