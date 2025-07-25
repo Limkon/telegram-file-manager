@@ -23,6 +23,16 @@ function findUserByName(username) {
 }
 
 // --- *** 新增部分 開始 *** ---
+function findUserById(id) {
+    return new Promise((resolve, reject) => {
+        db.get("SELECT * FROM users WHERE id = ?", [id], (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
+        });
+    });
+}
+// --- *** 新增部分 結束 *** ---
+
 function changeUserPassword(userId, newHashedPassword) {
     return new Promise((resolve, reject) => {
         const sql = `UPDATE users SET password = ? WHERE id = ?`;
@@ -53,7 +63,6 @@ function deleteUser(userId) {
         });
     });
 }
-// --- *** 新增部分 結束 *** ---
 
 
 // --- 檔案搜尋 ---
@@ -188,7 +197,7 @@ function addFile(fileData, folderId = 1, userId, storageType) {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     return new Promise((resolve, reject) => {
         db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, folderId, userId, storageType], function(err) {
-            if (err) reject(err);
+            if (err) return reject(err);
             else resolve({ success: true, id: this.lastID, fileId: this.lastID });
         });
     });
@@ -328,6 +337,7 @@ function findFileInFolder(fileName, folderId, userId) {
 module.exports = { 
     createUser,
     findUserByName,
+    findUserById,
     changeUserPassword,
     listNormalUsers,
     deleteUser,
