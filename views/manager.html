@@ -86,10 +86,26 @@
     .notification.local { margin-bottom: 15px; } /* 局部通知 */
     .notification.success { background-color: #28a745; }
     .notification.error { background-color: #dc3545; }
+    #drop-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 123, 255, 0.2);
+        border: 3px dashed var(--primary-color);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        font-size: 24px;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="main-container">
     <header class="main-header">
       <a href="#" id="homeLink">
         <h1><i class="fas fa-home"></i> 文件管理器</h1>
@@ -111,6 +127,9 @@
 
     <div class="item-grid" id="itemGrid"></div>
   </div>
+    <div id="drop-overlay">
+        <p>將文件或文件夾拖放到此處以上傳</p>
+    </div>
 
   <div id="previewModal" class="modal">
     <span class="close-button">&times;</span>
