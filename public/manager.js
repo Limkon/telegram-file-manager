@@ -117,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const link = document.createElement(index === path.length - 1 && !isSearchMode ? 'span' : 'a');
-            // --- *** 修改部分 *** ---
             link.textContent = p.name === '/' ? '根目录' : p.name;
             if (link.tagName === 'A') {
                 link.href = '#';
@@ -140,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'item-card';
         card.dataset.id = item.id;
         card.dataset.type = item.type;
-        // --- *** 修改部分 *** ---
         card.dataset.name = item.name === '/' ? '根目录' : item.name;
         
         let iconHtml = '';
@@ -157,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             iconHtml = '<i class="fas fa-folder"></i>';
         }
         
-        // --- *** 修改部分 *** ---
         card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name === '/' ? '根目录' : item.name}</h5></div>`;
         if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
@@ -191,27 +188,29 @@ document.addEventListener('DOMContentLoaded', () => {
             card.classList.toggle('selected', selectedItems.has(card.dataset.id));
         });
     };
-    const loadFoldersForUpload = async () => {
-        foldersLoaded = false;
+    const loadFoldersForSelect = async () => {
+        if (foldersLoaded) return;
         try {
             const res = await axios.get('/api/folders');
             const folders = res.data;
-            folderSelect.innerHTML = '';
             const folderMap = new Map(folders.map(f => [f.id, { ...f, children: [] }]));
             const tree = [];
             folderMap.forEach(f => {
                 if (f.parent_id && folderMap.has(f.parent_id)) folderMap.get(f.parent_id).children.push(f);
                 else tree.push(f);
             });
+            
+            // For Upload Select
+            folderSelect.innerHTML = '';
             const buildOptions = (node, prefix = '') => {
                 const option = document.createElement('option');
                 option.value = node.id;
-                // --- *** 修改部分 *** ---
                 option.textContent = prefix + (node.name === '/' ? '根目录' : node.name);
                 folderSelect.appendChild(option);
                 node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildOptions(child, prefix + '　'));
             };
             tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(buildOptions);
+
             foldersLoaded = true;
         } catch (error) {
             console.error('加載資料夾列表失敗', error);
@@ -476,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (showUploadModalBtn) {
         showUploadModalBtn.addEventListener('click', async () => {
-            await loadFoldersForUpload();
+            await loadFoldersForSelect();
             folderSelect.value = currentFolderId;
             uploadNotificationArea.innerHTML = '';
             uploadForm.reset();
@@ -522,12 +521,13 @@ document.addEventListener('DOMContentLoaded', () => {
              const newName = prompt('請輸入新的名稱:', item.name);
              if (newName && newName.trim() && newName !== item.name) {
                  try {
-                     if (item.type === 'file') {
-                        await axios.post('/rename', { messageId: id, newFileName: newName.trim() });
-                     } else {
-                         alert('暫不支援重命名資料夾。');
-                     }
-                     isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
+                    // --- *** 修改部分 *** ---
+                    await axios.post('/rename', { 
+                        id: id, 
+                        newName: newName.trim(),
+                        type: item.type 
+                    });
+                    isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
                  } catch (error) {
                      alert('重命名失敗');
                  }
@@ -584,9 +584,31 @@ document.addEventListener('DOMContentLoaded', () => {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
             try {
-                await loadFoldersForUpload();
-                const folderTreeEl = document.getElementById('folderTree');
-                folderTreeEl.innerHTML = folderSelect.innerHTML;
+                // --- *** 修改部分 *** ---
+                const res = await axios.get('/api/folders');
+                const folders = res.data;
+                folderTree.innerHTML = '';
+                
+                const folderMap = new Map(folders.map(f => [f.id, { ...f, children: [] }]));
+                const tree = [];
+                folderMap.forEach(f => {
+                    if (f.parent_id && folderMap.has(f.parent_id)) {
+                        folderMap.get(f.parent_id).children.push(f);
+                    } else {
+                        tree.push(f);
+                    }
+                });
+
+                const buildTree = (node, prefix = '') => {
+                    const item = document.createElement('div');
+                    item.className = 'folder-item';
+                    item.dataset.folderId = node.id;
+                    item.textContent = prefix + (node.name === '/' ? '根目录' : node.name);
+                    folderTree.appendChild(item);
+                    node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　'));
+                };
+                tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(buildTree);
+
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
@@ -595,12 +617,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (folderTree) {
         folderTree.addEventListener('click', e => {
-            const target = e.target.closest('option');
+            const target = e.target.closest('.folder-item');
             if (!target) return;
-            const previouslySelected = folderTree.querySelector('option[selected]');
-            if (previouslySelected) previouslySelected.removeAttribute('selected');
-            target.setAttribute('selected', 'selected');
-            moveTargetFolderId = parseInt(target.value);
+            const previouslySelected = folderTree.querySelector('.folder-item.selected');
+            if (previouslySelected) previouslySelected.classList.remove('selected');
+            target.classList.add('selected');
+            moveTargetFolderId = parseInt(target.dataset.folderId);
             confirmMoveBtn.disabled = false;
         });
     }
