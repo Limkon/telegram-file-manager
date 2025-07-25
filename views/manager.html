@@ -55,12 +55,9 @@
         font-weight: bold; 
         cursor: pointer; 
     }
-    /* --- *** 修改部分 開始 *** --- */
     #uploadModal .close-button {
         color: #333; /* 讓上傳彈窗的關閉按鈕變成深色 */
     }
-    /* --- *** 修改部分 結束 *** --- */
-
     .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
     .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
     .no-preview {
@@ -72,16 +69,12 @@
         margin-bottom: 10px;
         display: block;
     }
-
-    /* 分享模態框樣式 */
     .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
     .share-modal-content h3 { margin-top: 0; }
     .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
     .share-modal-content .confirm-share { background-color: var(--primary-color); color: white; border: none; cursor: pointer; }
     .share-modal-content .cancel-share { background-color: #6c757d; color: white; border: none; cursor: pointer; }
     .share-link-container { margin-top: 20px; word-wrap: break-word; background-color: #f1f3f5; padding: 10px; border-radius: 5px; text-align: left; }
-
-    /* 移動模態框樣式 */
     .move-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; text-align: center; }
     .move-modal-content h3 { margin-top: 0; }
     #folderTree { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-top: 15px; }
@@ -92,17 +85,11 @@
     #confirmMoveBtn { background-color: var(--primary-color); color: white; }
     #cancelMoveBtn { background-color: #6c757d; color: white; }
     .create-folder-btn { background-color: #17a2b8; }
-    
-    /* 搜尋框樣式 */
     .search-form { position: relative; flex-grow: 1; max-width: 400px; }
     #searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
     .search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
-
     #multiSelectBtn.active { background-color: var(--primary-color); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary-color); }
-    
     #homeLink { text-decoration: none; color: var(--text-color); display: inline-flex; align-items: center; gap: 10px; }
-
-    /* 上傳彈窗相關樣式 */
     .upload-modal-content { background-color: var(--card-background); padding: 24px; border-radius: 8px; box-shadow: var(--shadow); width: 100%; max-width: 600px; position: relative; }
     #uploadForm input, #uploadForm button, #uploadForm select { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
     #uploadForm button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-size: 16px; }
@@ -111,13 +98,15 @@
     .progress-area { margin-top: 15px; display: none; }
     .progress-bar-container { width: 100%; height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; }
     .progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.4s ease; }
-    
-    /* 通知樣式 */
     .notification { padding: 12px 20px; border-radius: 5px; color: white; z-index: 1000; font-weight: bold; }
     .notification.global { position: fixed; top: 20px; right: 20px; }
     .notification.local { margin-bottom: 15px; }
     .notification.success { background-color: #28a745; }
     .notification.error { background-color: #dc3545; }
+    /* --- *** 新增部分 *** --- */
+    .header-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    #changePasswordBtn { background-color: #ffc107; }
+    #logoutBtn { background-color: #dc3545; }
   </style>
 </head>
 <body>
@@ -126,12 +115,14 @@
       <a href="#" id="homeLink">
         <h1><i class="fas fa-home"></i> 文件管理器</h1>
       </a>
-      <div style="display: flex; gap: 10px; align-items: center;">
+      <div class="header-buttons">
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 管理共享</span></a>
         <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立資料夾</span></button>
         <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上傳文件</span></button>
+        <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密碼</span></button>
+        <button id="logoutBtn" class="upload-link-btn"><i class="fas fa-sign-out-alt"></i><span class="button-text"> 登出</span></button>
       </div>
-    </header>
+      </header>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
         <nav class="breadcrumb" id="breadcrumb" style="margin-bottom: 0; flex-grow: 1;"></nav>
@@ -223,6 +214,7 @@
     <button id="selectAllBtn" title="全選/取消全選"><i class="fas fa-check-double"></i></button>
     <span id="selectionCount">已選擇 0 個項目</span>
     <div class="actions">
+        <button id="textEditBtn" title="新建文字檔"><i class="fas fa-file-alt"></i></button>
         <button id="multiSelectBtn" title="多選模式"><i class="fas fa-tasks"></i></button>
         <button id="previewBtn" title="預覽" disabled><i class="fas fa-eye"></i></button>
         <button id="moveBtn" title="移動" disabled><i class="fas fa-people-arrows"></i></button>
