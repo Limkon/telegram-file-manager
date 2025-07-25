@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字編輯器</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --background-color: #f8f9fa;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .editor-header {
+            background-color: #fff;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .editor-header input[type="text"] {
+            border: none;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 8px;
+            border-radius: 4px;
+            flex-grow: 1;
+            margin-right: 20px;
+        }
+        .editor-header input[type="text"]:focus {
+            outline: 2px solid var(--primary-color);
+        }
+        .editor-actions button {
+            padding: 8px 16px;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        #saveBtn {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        #cancelBtn {
+            background-color: #6c757d;
+            color: white;
+        }
+        .editor-container {
+            flex-grow: 1;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        #editor {
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            box-sizing: border-box;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            line-height: 1.5;
+            resize: none;
+        }
+        #editor:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-header">
+        <input type="text" id="fileNameInput" placeholder="請輸入檔名.txt">
+        <div class="editor-actions">
+            <button id="saveBtn">儲存</button>
+            <button id="cancelBtn">取消</button>
+        </div>
+    </div>
+    <div class="editor-container">
+        <textarea id="editor" spellcheck="false"></textarea>
+    </div>
+
+    <script src="/vendor/axios/axios.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileNameInput = document.getElementById('fileNameInput');
+            const editor = document.getElementById('editor');
+            const saveBtn = document.getElementById('saveBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode'); // 'create' or 'edit'
+            const fileId = urlParams.get('fileId');
+            const folderId = urlParams.get('folderId');
+
+            async function loadFileContent() {
+                if (mode === 'edit' && fileId) {
+                    try {
+                        const fileInfoRes = await axios.get(`/api/file-info/${fileId}`);
+                        const fileContentRes = await axios.get(`/file/content/${fileId}`);
+                        
+                        fileNameInput.value = fileInfoRes.data.fileName;
+                        editor.value = fileContentRes.data;
+                    } catch (error) {
+                        alert('載入檔案失敗！');
+                        window.close();
+                    }
+                }
+            }
+
+            saveBtn.addEventListener('click', async () => {
+                const fileName = fileNameInput.value.trim();
+                if (!fileName.endsWith('.txt')) {
+                    alert('檔名必須以 .txt 結尾');
+                    return;
+                }
+                const content = editor.value;
+                saveBtn.disabled = true;
+                saveBtn.textContent = '儲存中...';
+
+                try {
+                    await axios.post('/api/text-file', {
+                        mode,
+                        fileId: fileId,
+                        folderId: folderId,
+                        fileName,
+                        content
+                    });
+                    
+                    // 通知父視窗刷新
+                    if (window.opener) {
+                        window.opener.postMessage('refresh-files', '*');
+                    }
+                    window.close();
+                } catch (error) {
+                    alert('儲存失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '儲存';
+                }
+            });
+
+            cancelBtn.addEventListener('click', () => {
+                window.close();
+            });
+
+            loadFileContent();
+        });
+    </script>
+</body>
+</html>
