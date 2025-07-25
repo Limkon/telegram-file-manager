@@ -9,7 +9,7 @@ Telegram 檔案管理器 (telegram-file-manager)
 
 使用者註冊：開放使用者註冊功能，每位使用者擁有獨立的儲存空間。
 
-帳號管理：使用者可自行修改密碼；管理員擁有一鍵新增、修改密碼、刪除普通使用者的權限。
+帳號管理：使用者可自行修改密碼（需驗證舊密碼）；管理員擁有一鍵新增、修改密碼、刪除普通使用者的權限。
 
 安全隔離：每個使用者的檔案和資料夾都是完全隔離的，確保了資料的私密性。
 
@@ -30,7 +30,7 @@ Telegram 儲存：利用 Telegram 的無限容量，將您的檔案作為訊息�
 打包下載：支援多選檔案和資料夾，一鍵打包為 .zip 檔案下載。
 
 📝 線上編輯與預覽
-文字檔案編輯器：直接在網頁上建立 (.txt) 或編輯現有文字檔案，支援即時儲存。
+文字檔案編輯器：直接在網頁上建立 (.txt) 或編輯現有文字檔案，支援即時儲存並可隨時返回。
 
 線上預覽：支援圖片、影片、純文字等多種類型檔案的線上預覽。
 
@@ -41,18 +41,49 @@ Telegram 儲存：利用 Telegram 的無限容量，將您的檔案作為訊息�
 
 分享管理：在「管理共享」頁面，可以查看所有正在分享的檔案並隨時取消分享。
 
+純文字直接顯示：分享的純文字檔案會直接在頁面中以閱讀模式顯示，而非預覽框。
+
 🚀 安裝與設定
 在開始之前，請確保您的系統已安裝 Git 和 Node.js (v16+)。
 
 1. 一鍵安裝腳本
 打開您的 Linux 或 macOS 終端機，執行以下任一命令即可下載並安裝基礎依賴：
-## 一键安装
 
-在运行之前，请确保您的系统已安装 `Git` 和 `Node.js` (v16+)。
+使用 curl (推薦):
 
-打开您的 Linux 或 macOS 终端，运行以下任一命令即可开始安装：
-
-#### 使用 `curl` (推荐):
-
-```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Limkon/telegram-file-manager/master/install.sh)"
+
+2. 安裝額外依賴
+由於我們新增了使用者密碼加密功能，需要額外安裝 bcrypt 套件：
+
+npm install bcrypt
+
+3. 設定環境變數
+安裝腳本執行完畢後，您需要在專案根目錄下手動建立一個名為 .env 的檔案，並填入以下內容：
+
+# 必填：從 @BotFather 取得您的 Telegram Bot Token
+BOT_TOKEN=your_bot_token_here
+
+# 必填：您的 Telegram 頻道的 ID (必須為私有頻道，並將 Bot 設為管理員)
+CHANNEL_ID=your_channel_id_here
+
+# 必填：設定網站的初始管理員帳號
+ADMIN_USER=admin
+ADMIN_PASS=your_admin_password
+
+# 必填：用於加密 Session 的隨機密鑰，請換成一個複雜的隨機字串
+SESSION_SECRET=a8e2a32e9b1c7d5f6a7b3c4d5e8f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f
+
+4. 啟動伺服器
+完成設定後，執行以下指令來啟動應用程式：
+
+npm start
+
+伺服器預設會在 8100 連接埠上運行。您現在可以透過 http://<您的伺服器 IP>:8100 來訪問了。
+
+🔧 使用說明
+管理員登入：使用您在 .env 檔案中設定的 ADMIN_USER 和 ADMIN_PASS 登入。
+
+普通使用者：訪問 http://<您的伺服器 IP>:8100/register 進行註冊，然後登入。
+
+管理後台：管理員登入後，可訪問 http://<您的伺服器 IP>:8100/admin 頁面來管理使用者和切換儲存模式。
