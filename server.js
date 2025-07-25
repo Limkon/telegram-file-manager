@@ -642,7 +642,27 @@ app.get('/share/view/folder/:token', async (req, res) => {
     }
 });
 
-// --- *** 新增部分 開始 *** ---
+// --- *** 關鍵修正：將此路由放在更通用的路由之前 *** ---
+app.get('/share/download/file/:token', async (req, res) => {
+    try {
+        const token = req.params.token;
+        const fileInfo = await data.getFileByShareToken(token);
+        if (fileInfo && fileInfo.file_id) {
+            const storage = storageManager.getStorage();
+            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileInfo.fileName)}`);
+            if (fileInfo.storage_type === 'telegram') {
+                const link = await storage.getUrl(fileInfo.file_id);
+                if (link) {
+                    const response = await axios({ method: 'get', url: link, responseType: 'stream' });
+                    response.data.pipe(res);
+                } else { res.status(404).send('無法獲取文件鏈接'); }
+            } else {
+                res.download(fileInfo.file_id, fileInfo.fileName);
+            }
+        } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
+    } catch (error) { res.status(500).send('下載失敗'); }
+});
+
 app.get('/share/thumbnail/:folderToken/:fileId', async (req, res) => {
     try {
         const { folderToken, fileId } = req.params;
@@ -689,28 +709,6 @@ app.get('/share/download/:folderToken/:fileId', async (req, res) => {
     } catch (error) {
         res.status(500).send('下載失敗');
     }
-});
-// --- *** 新增部分 結束 *** ---
-
-
-app.get('/share/download/file/:token', async (req, res) => {
-    try {
-        const token = req.params.token;
-        const fileInfo = await data.getFileByShareToken(token);
-        if (fileInfo && fileInfo.file_id) {
-            const storage = storageManager.getStorage();
-            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileInfo.fileName)}`);
-            if (fileInfo.storage_type === 'telegram') {
-                const link = await storage.getUrl(fileInfo.file_id);
-                if (link) {
-                    const response = await axios({ method: 'get', url: link, responseType: 'stream' });
-                    response.data.pipe(res);
-                } else { res.status(404).send('無法獲取文件鏈接'); }
-            } else {
-                res.download(fileInfo.file_id, fileInfo.fileName);
-            }
-        } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
-    } catch (error) { res.status(500).send('下載失敗'); }
 });
 
 
