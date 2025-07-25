@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileListContainer = document.getElementById('file-selection-list');
     const folderSelect = document.getElementById('folderSelect');
     const uploadNotificationArea = document.getElementById('uploadNotificationArea');
-    const dropZone = document.getElementById('dropZone'); // 新增
+    const dropZone = document.getElementById('dropZone');
 
     // 狀態
     let isMultiSelectMode = false;
@@ -202,28 +202,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- *** 修改部分 開始 *** ---
-    const handleFilesUpload = async (files, targetFolderId) => {
-        for (const file of files) {
-            if (file.size > MAX_TELEGRAM_SIZE) {
-                showNotification(`檔案 "${file.name}" 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error');
-                return;
+    const uploadFiles = async (files, targetFolderId) => {
+        if (files.length === 0) return;
+
+        const oversizedFiles = Array.from(files).filter(file => file.size > MAX_TELEGRAM_SIZE);
+        if (oversizedFiles.length > 0) {
+            const fileNames = oversizedFiles.map(f => `"${f.name}"`).join(', ');
+            showNotification(`檔案 ${fileNames} 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadModal.style.display === 'flex' ? uploadNotificationArea : null);
+            return;
+        }
+
+        let existenceData = [];
+        try {
+            const res = await axios.post('/api/check-existence', { fileNames: Array.from(files).map(f => f.name), folderId: targetFolderId });
+            existenceData = res.data.files;
+        } catch (error) {
+            showNotification('檢查檔案是否存在時出錯。', 'error');
+            return;
+        }
+        
+        const filesToUpload = [];
+        const filesToOverwrite = [];
+
+        for (const file of Array.from(files)) {
+            const existing = existenceData.find(f => f.name === file.name && f.exists);
+            if (existing) {
+                if (confirm(`檔案 "${file.name}" 已存在。您要覆蓋它嗎？`)) {
+                    filesToOverwrite.push({ name: file.name, messageId: existing.messageId });
+                    filesToUpload.push(file);
+                }
+            } else {
+                filesToUpload.push(file);
             }
         }
-    
-        const formData = new FormData();
-        for (const file of files) {
-            formData.append('files', file);
+
+        if (filesToUpload.length === 0) {
+            showNotification('已取消，沒有檔案被上傳。', 'info');
+            return;
         }
+
+        const formData = new FormData();
+        filesToUpload.forEach(file => {
+            formData.append('files', file);
+        });
         formData.append('folderId', targetFolderId);
-    
-        // 這裡可以重用彈窗中的進度條邏輯，或者為拖拽創建一個新的
+        formData.append('overwrite', JSON.stringify(filesToOverwrite));
+        
+        const captionInput = document.getElementById('uploadCaption');
+        if (captionInput && captionInput.value) {
+            formData.append('caption', captionInput.value);
+        }
+
         showNotification('開始上傳...', 'info');
-    
+        uploadModal.style.display = 'none';
+
         try {
-            const res = await axios.post('/upload', formData, {
-                // 如果需要進度條，可以添加 onUploadProgress
-            });
+            const res = await axios.post('/upload', formData);
             if (res.data.success) {
                 showNotification('上傳成功！', 'success');
                 loadFolderContents(currentFolderId);
@@ -234,8 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error');
         }
     };
-    // --- *** 修改部分 結束 *** ---
-
+    
     // --- 事件監聽 ---
     if (uploadForm) {
         fileInput.addEventListener('change', () => {
@@ -243,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fileInput.files.length > 0) {
                 for (const file of fileInput.files) {
                     const listItem = document.createElement('li');
-                    listItem.textContent = file.name;
+                    listItem.textContent = `${file.name} (${formatBytes(file.size)})`;
                     fileListContainer.appendChild(listItem);
                 }
             }
@@ -251,52 +284,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         uploadForm.onsubmit = async function (e) {
             e.preventDefault();
-            if (fileInput.files.length === 0) { 
-                showNotification('請選擇文件', 'error', uploadNotificationArea); 
-                return; 
-            }
-            
-            for (const file of fileInput.files) {
-                if (file.size > MAX_TELEGRAM_SIZE) {
-                    showNotification(`檔案 "${file.name}" 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadNotificationArea);
-                    return;
-                }
-            }
-            
-            uploadNotificationArea.innerHTML = '';
-            const formData = new FormData(uploadForm);
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            const progressArea = document.getElementById('progressArea');
-            const progressBar = document.getElementById('progressBar');
-            submitButton.disabled = true;
-            submitButton.textContent = '上傳中...';
-            progressArea.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressBar.textContent = '0%';
-            try {
-                const res = await axios.post('/upload', formData, {
-                    onUploadProgress: p => {
-                        const percent = Math.round((p.loaded * 100) / p.total);
-                        progressBar.style.width = percent + '%';
-                        progressBar.textContent = percent + '%';
-                    }
-                });
-                if (res.data.success) {
-                    showNotification('上傳成功！', 'success');
-                    uploadModal.style.display = 'none';
-                    loadFolderContents(currentFolderId);
-                } else {
-                    showNotification('上傳失敗', 'error', uploadNotificationArea);
-                }
-            } catch (error) {
-                showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = '上傳';
-                setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
+            const files = fileInput.files;
+            const targetFolderId = folderSelect.value;
+            if (files.length > 0) {
+                uploadFiles(files, targetFolderId);
+            } else {
+                showNotification('請選擇要上傳的檔案。', 'error', uploadNotificationArea);
             }
         };
     }
+
+    if (dropZone) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'));
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'));
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFiles(files, currentFolderId);
+            }
+        });
+    }
+    
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -596,37 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
     
-    // --- *** 修改部分 開始 *** ---
-    if (dropZone) {
-        dropZone.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropZone.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFilesUpload(files, currentFolderId);
-            }
-        });
-    }
-    // --- *** 修改部分 結束 *** ---
-
     if (document.getElementById('itemGrid')) {
         const initialFolderId = parseInt(window.location.pathname.split('/folder/')[1] || '1', 10);
         loadFolderContents(initialFolderId);
