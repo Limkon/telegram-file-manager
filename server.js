@@ -561,15 +561,23 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
 
 
 app.post('/share', requireLogin, async (req, res) => {
-    const { itemId, itemType, expiresIn } = req.body;
-    if (!itemId || !itemType || !expiresIn) return res.status(400).json({ success: false, message: '缺少必要參數。' });
-    
-    const result = await data.createShareLink(parseInt(itemId, 10), itemType, expiresIn, req.session.userId);
-    if (result.success) {
-        const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${itemType}/${result.token}`;
-        res.json({ success: true, url: shareUrl });
-    } else {
-        res.status(500).json(result);
+    try {
+        const { itemId, itemType, expiresIn } = req.body;
+        if (!itemId || !itemType || !expiresIn) {
+            return res.status(400).json({ success: false, message: '缺少必要參數。' });
+        }
+        
+        const result = await data.createShareLink(parseInt(itemId, 10), itemType, expiresIn, req.session.userId);
+        
+        if (result.success) {
+            const shareUrl = `${req.protocol}://${req.get('host')}/share/view/${itemType}/${result.token}`;
+            res.json({ success: true, url: shareUrl });
+        } else {
+            res.status(404).json(result); 
+        }
+    } catch (error) {
+        console.error("Share link creation error:", error);
+        res.status(500).json({ success: false, message: '在伺服器上建立分享連結時發生錯誤。' });
     }
 });
 
