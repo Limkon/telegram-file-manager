@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
     const textEditBtn = document.getElementById('textEditBtn');
-    const logoutBtn = document.getElementById('logoutBtn'); // 新增
-    const changePasswordBtn = document.getElementById('changePasswordBtn'); // 新增
+    const logoutBtn = document.getElementById('logoutBtn');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -318,16 +318,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // --- 事件監聽 ---
-    // --- *** 新增部分 開始 *** ---
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             window.location.href = '/logout';
         });
     }
 
+    // --- *** 修改部分 開始 *** ---
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', async () => {
-            const newPassword = prompt('請輸入您的新密碼：');
+            const oldPassword = prompt('請輸入您的舊密碼：');
+            if (!oldPassword) return;
+
+            const newPassword = prompt('請輸入您的新密碼 (至少 4 個字元)：');
             if (!newPassword) return;
 
             if (newPassword.length < 4) {
@@ -342,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const res = await axios.post('/api/user/change-password', { newPassword });
+                const res = await axios.post('/api/user/change-password', { oldPassword, newPassword });
                 if (res.data.success) {
                     alert('密碼修改成功！');
                 }
@@ -351,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 新增部分 結束 *** ---
+    // --- *** 修改部分 結束 *** ---
 
     if (uploadForm) {
         fileInput.addEventListener('change', () => {
