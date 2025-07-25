@@ -51,6 +51,7 @@ app.post('/login', (req, res) => {
 });
 app.get('/', requireLogin, (req, res) => res.redirect('/folder/1'));
 app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
+// --- *** 關鍵修正：移除舊的 /upload-page 路由 *** ---
 app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
@@ -91,6 +92,7 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
     }
 });
 
+// ... (所有其他 API 路由保持不變) ...
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
@@ -102,18 +104,10 @@ app.get('/api/search', requireLogin, async (req, res) => {
 });
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
-    const initialFolderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
+    const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
     const results = [];
     for (const file of req.files) {
-        const pathParts = file.originalname.split('/').filter(p => p);
-        const fileName = pathParts.pop();
-        let parentFolderId = initialFolderId;
-
-        if (pathParts.length > 0) {
-            parentFolderId = await data.findOrCreateFolderByPath(initialFolderId, pathParts.join('/'));
-        }
-
-        const result = await sendFile(file.buffer, fileName, file.mimetype, req.body.caption || '', parentFolderId);
+        const result = await sendFile(file.buffer, file.originalname, file.mimetype, req.body.caption || '', folderId);
         results.push(result);
     }
     res.json({ success: true, results });
