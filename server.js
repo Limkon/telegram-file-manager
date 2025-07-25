@@ -255,11 +255,29 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     res.json({ success: true });
 });
 
+// --- *** 修改部分 開始 *** ---
 app.post('/rename', requireLogin, async (req, res) => {
-    const { messageId, newFileName } = req.body;
-    const result = await data.renameFile(parseInt(messageId, 10), newFileName, req.session.userId);
-    res.json(result);
+    try {
+        const { id, newName, type } = req.body;
+        const userId = req.session.userId;
+        if (!id || !newName || !type) {
+            return res.status(400).json({ success: false, message: '缺少必要參數。'});
+        }
+
+        let result;
+        if (type === 'file') {
+            result = await data.renameFile(parseInt(id, 10), newName, userId);
+        } else if (type === 'folder') {
+            result = await data.renameFolder(parseInt(id, 10), newName, userId);
+        } else {
+            return res.status(400).json({ success: false, message: '無效的項目類型。'});
+        }
+        res.json(result);
+    } catch (error) { 
+        res.status(500).json({ success: false, message: '重命名失敗' }); 
+    }
 });
+// --- *** 修改部分 結束 *** ---
 
 app.post('/delete-multiple', requireLogin, async (req, res) => {
     const { messageIds } = req.body;
@@ -286,7 +304,6 @@ app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
             if (link) return res.redirect(link);
         }
         
-        // 對於本地檔案或沒有縮圖的 TG 檔案，返回一個透明的 gif 佔位符
         const placeholder = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
         res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': placeholder.length });
         res.end(placeholder);
