@@ -51,7 +51,6 @@ app.post('/login', (req, res) => {
 });
 app.get('/', requireLogin, (req, res) => res.redirect('/folder/1'));
 app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
-// --- *** 關鍵修正：移除舊的 /upload-page 路由 *** ---
 app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
@@ -92,7 +91,6 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
     }
 });
 
-// ... (所有其他 API 路由保持不變) ...
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
@@ -102,9 +100,20 @@ app.get('/api/search', requireLogin, async (req, res) => {
         res.json({ contents, path });
     } catch (error) { res.status(500).json({ success: false, message: '搜尋失敗。' }); }
 });
+
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
-    if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ success: false, message: '沒有選擇文件' });
+    }
+
     const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
+    const overwriteInfo = req.body.overwrite ? JSON.parse(req.body.overwrite) : [];
+    
+    if (overwriteInfo.length > 0) {
+        const messageIdsToDelete = overwriteInfo.map(f => f.messageId);
+        await deleteMessages(messageIdsToDelete);
+    }
+    
     const results = [];
     for (const file of req.files) {
         const result = await sendFile(file.buffer, file.originalname, file.mimetype, req.body.caption || '', folderId);
@@ -112,6 +121,31 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     }
     res.json({ success: true, results });
 });
+
+app.post('/api/check-existence', requireLogin, async (req, res) => {
+    try {
+        const { fileNames, folderId } = req.body;
+        if (!fileNames || !Array.isArray(fileNames) || !folderId) {
+            return res.status(400).json({ success: false, message: '無效的請求參數。' });
+        }
+
+        const existenceChecks = await Promise.all(
+            fileNames.map(async (name) => {
+                const existingFile = await data.findFileInFolder(name, folderId);
+                return {
+                    name,
+                    exists: !!existingFile,
+                    messageId: existingFile ? existingFile.message_id : null,
+                };
+            })
+        );
+
+        res.json({ success: true, files: existenceChecks });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '檢查檔案存在時發生錯誤。' });
+    }
+});
+
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
         const folderId = parseInt(req.params.id, 10);
