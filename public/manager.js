@@ -177,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!actionBar) return;
         const count = selectedItems.size;
         selectionCountSpan.textContent = `已選擇 ${count} 個項目`;
+
         if (downloadBtn) downloadBtn.disabled = count === 0;
         
         const isSingleTextFile = count === 1 && selectedItems.values().next().value.name.endsWith('.txt');
@@ -187,11 +188,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
-        if (shareBtn) shareBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
+        
+        // --- *** 關鍵修正 *** ---
+        // 允許在選中一個檔案或一個資料夾時啟用分享按鈕
+        if (shareBtn) shareBtn.disabled = count !== 1;
+        
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
         actionBar.classList.toggle('visible', count > 0 || textEditBtn);
+        if (!isMultiSelectMode && multiSelectBtn) {
+            multiSelectBtn.classList.remove('active');
+        }
     };
     const rerenderSelection = () => {
         document.querySelectorAll('.item-card').forEach(card => {
@@ -324,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- *** 修改部分 開始 *** ---
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', async () => {
             const oldPassword = prompt('請輸入您的舊密碼：');
@@ -354,7 +361,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 修改部分 結束 *** ---
 
     if (uploadForm) {
         fileInput.addEventListener('change', () => {
@@ -727,6 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const shareLinkContainer = document.getElementById('shareLinkContainer');
         const copyLinkBtn = document.getElementById('copyLinkBtn');
         const closeShareModalBtn = document.getElementById('closeShareModalBtn');
+
         shareBtn.addEventListener('click', () => {
             if (shareBtn.disabled) return;
             shareOptions.style.display = 'block';
@@ -735,11 +742,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         cancelShareBtn.addEventListener('click', () => shareModal.style.display = 'none');
         closeShareModalBtn.addEventListener('click', () => shareModal.style.display = 'none');
+
         confirmShareBtn.addEventListener('click', async () => {
-            const messageId = selectedItems.keys().next().value;
+            const [itemId, item] = selectedItems.entries().next().value;
+            const itemType = item.type;
             const expiresIn = expiresInSelect.value;
             try {
-                const res = await axios.post('/share', { messageId, expiresIn });
+                const res = await axios.post('/share', { itemId, itemType, expiresIn });
                 if (res.data.success) {
                     shareLinkContainer.textContent = res.data.url;
                     shareOptions.style.display = 'none';
