@@ -92,7 +92,7 @@
 </head>
 <body>
     <div class="editor-header">
-        <input type="text" id="fileNameInput" placeholder="請輸入檔名.txt">
+        <input type="text" id="fileNameInput" placeholder="請輸入檔名 (可省略 .txt)">
         <div class="editor-actions">
             <span id="saveStatus"></span>
             <button id="saveBtn">儲存</button>
@@ -113,7 +113,7 @@
             const saveStatus = document.getElementById('saveStatus');
 
             const urlParams = new URLSearchParams(window.location.search);
-            const mode = urlParams.get('mode'); // 'create' or 'edit'
+            let mode = urlParams.get('mode');
             let fileId = urlParams.get('fileId');
             const folderId = urlParams.get('folderId');
 
@@ -133,11 +133,20 @@
             }
 
             saveBtn.addEventListener('click', async () => {
-                const fileName = fileNameInput.value.trim();
-                if (!fileName.endsWith('.txt')) {
-                    alert('檔名必須以 .txt 結尾');
+                let fileName = fileNameInput.value.trim();
+                
+                if (!fileName) {
+                    alert('檔名不能為空！');
                     return;
                 }
+
+                // --- *** 修改部分 開始 *** ---
+                // 如果使用者沒有輸入 .txt，則自動添加
+                if (!fileName.endsWith('.txt')) {
+                    fileName += '.txt';
+                }
+                // --- *** 修改部分 結束 *** ---
+
                 const content = editor.value;
                 saveBtn.disabled = true;
                 saveBtn.textContent = '儲存中...';
@@ -145,7 +154,6 @@
 
                 try {
                     const response = await axios.post('/api/text-file', {
-                        // 如果是新建模式，第一次儲存後就變成編輯模式
                         mode: fileId ? 'edit' : 'create', 
                         fileId: fileId,
                         folderId: folderId,
@@ -157,8 +165,6 @@
                         window.opener.postMessage('refresh-files', '*');
                     }
                     
-                    // --- *** 修改部分 *** ---
-                    // 顯示成功提示，2秒後消失
                     saveStatus.textContent = '✓ 已儲存';
                     setTimeout(() => {
                         saveStatus.textContent = '';
@@ -167,8 +173,10 @@
                     // 如果是新建檔案，儲存後獲取新的 fileId，頁面轉換為編輯模式
                     if (mode === 'create' && response.data.fileId) {
                         fileId = response.data.fileId;
+                        mode = 'edit';
                         const newUrl = `${window.location.pathname}?mode=edit&fileId=${fileId}`;
                         history.pushState({}, '', newUrl);
+                        fileNameInput.value = fileName; // 同步更新輸入框中的檔名
                     }
 
                 } catch (error) {
