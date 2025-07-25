@@ -51,7 +51,6 @@ app.post('/login', (req, res) => {
 });
 app.get('/', requireLogin, (req, res) => res.redirect('/folder/1'));
 app.get('/folder/:id', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/manager.html')));
-// --- *** 關鍵修正：移除舊的 /upload-page 路由 *** ---
 app.get('/shares-page', requireLogin, (req, res) => res.sendFile(path.join(__dirname, 'views/shares.html')));
 
 
@@ -92,7 +91,6 @@ app.post('/api/download-archive', requireLogin, async (req, res) => {
     }
 });
 
-// ... (所有其他 API 路由保持不變) ...
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
         const query = req.query.q;
