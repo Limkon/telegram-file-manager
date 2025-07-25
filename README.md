@@ -50,7 +50,7 @@ Telegram 儲存：利用 Telegram 的無限容量，將您的檔案作為訊息�
 打開您的 Linux 或 macOS 終端機，執行以下任一命令即可下載並安裝基礎依賴：
 
 使用 curl (推薦):
-
+```
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Limkon/telegram-file-manager/master/install.sh)"
 
 2. 安裝額外依賴
