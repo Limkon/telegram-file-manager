@@ -74,6 +74,9 @@
         .download-btn:hover {
             background-color: #0056b3;
         }
+        .download-btn i {
+            margin-right: 8px;
+        }
         .preview-container {
             margin-top: 20px;
             max-width: 100%;
@@ -87,44 +90,44 @@
 </head>
 <body class="<%- textContent ? 'text-mode' : '' %>">
 
-    <% if (textContent) { %>
-        <%- textContent %>
-    <% } else { %>
-        <div class="share-container">
-            <% 
-                let iconClass = 'fa-file-alt';
-                if (file.mimetype) {
-                    if (file.mimetype.startsWith('image/')) iconClass = 'fa-file-image';
-                    else if (file.mimetype.startsWith('video/')) iconClass = 'fa-file-video';
-                    else if (file.mimetype.includes('pdf')) iconClass = 'fa-file-pdf';
-                    else if (file.mimetype.includes('archive') || file.mimetype.includes('zip')) iconClass = 'fa-file-archive';
-                }
-            %>
-            <div class="file-icon">
-                <i class="fas <%= iconClass %>"></i>
-            </div>
-            
-            <h2><%= file.fileName %></h2>
-            
-            <% if (file.share_expires_at) { %>
-                <p class="file-info">此分享將於 <%= new Date(file.share_expires_at).toLocaleString() %> 過期</p>
-            <% } else { %>
-                <p class="file-info">此分享永久有效</p>
-            <% } %>
-
-            <a href="<%= downloadUrl %>" class="download-btn">
-                <i class="fas fa-download"></i> 下載檔案
-            </a>
-
-            <div class="preview-container">
-                <% if (file.mimetype && file.mimetype.startsWith('image/')) { %>
-                    <img src="<%= downloadUrl %>" alt="圖片預覽">
-                <% } else if (file.mimetype && file.mimetype.startsWith('video/')) { %>
-                    <video src="<%= downloadUrl %>" controls preload="metadata"></video>
-                <% } %>
-            </div>
+<% if (textContent) { -%>
+<%- textContent %>
+<% } else { -%>
+    <div class="share-container">
+        <% 
+            let iconClass = 'fa-file-alt';
+            if (file.mimetype) {
+                if (file.mimetype.startsWith('image/')) iconClass = 'fa-file-image';
+                else if (file.mimetype.startsWith('video/')) iconClass = 'fa-file-video';
+                else if (file.mimetype.includes('pdf')) iconClass = 'fa-file-pdf';
+                else if (file.mimetype.includes('archive') || file.mimetype.includes('zip')) iconClass = 'fa-file-archive';
+            }
+        %>
+        <div class="file-icon">
+            <i class="fas <%= iconClass %>"></i>
         </div>
-    <% } %>
+        
+        <h2><%= file.fileName %></h2>
+        
+        <% if (file.share_expires_at) { %>
+            <p class="file-info">此分享將於 <%= new Date(file.share_expires_at).toLocaleString() %> 過期</p>
+        <% } else { %>
+            <p class="file-info">此分享永久有效</p>
+        <% } %>
+
+        <a href="<%= downloadUrl %>" class="download-btn">
+            <i class="fas fa-download"></i> 下載檔案
+        </a>
+
+        <div class="preview-container">
+            <% if (file.mimetype && file.mimetype.startsWith('image/')) { %>
+                <img src="<%= downloadUrl %>" alt="圖片預覽">
+            <% } else if (file.mimetype && file.mimetype.startsWith('video/')) { %>
+                <video src="<%= downloadUrl %>" controls preload="metadata"></video>
+            <% } %>
+        </div>
+    </div>
+<% } -%>
 
 </body>
 </html>
