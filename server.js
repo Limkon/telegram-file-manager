@@ -273,6 +273,129 @@ app.post('/delete-multiple', requireLogin, async (req, res) => {
     res.json(result);
 });
 
+// --- **以下為修正後的檔案存取相關路由** ---
+
+app.get('/thumbnail/:message_id', requireLogin, async (req, res) => {
+    try {
+        const messageId = parseInt(req.params.message_id, 10);
+        const [fileInfo] = await data.getFilesByIds([messageId], req.session.userId);
+
+        if (fileInfo && fileInfo.storage_type === 'telegram' && fileInfo.thumb_file_id) {
+            const storage = storageManager.getStorage();
+            const link = await storage.getUrl(fileInfo.thumb_file_id);
+            if (link) return res.redirect(link);
+        }
+        
+        // 對於本地檔案或沒有縮圖的 TG 檔案，返回一個透明的 gif 佔位符
+        const placeholder = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+        res.writeHead(200, { 'Content-Type': 'image/gif', 'Content-Length': placeholder.length });
+        res.end(placeholder);
+
+    } catch (error) { res.status(500).send('獲取縮圖失敗'); }
+});
+
+app.get('/download/proxy/:message_id', requireLogin, async (req, res) => {
+    try {
+        const messageId = parseInt(req.params.message_id, 10);
+        const [fileInfo] = await data.getFilesByIds([messageId], req.session.userId);
+        
+        if (fileInfo && fileInfo.file_id) {
+            const storage = storageManager.getStorage();
+            res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileInfo.fileName)}`);
+
+            if (fileInfo.storage_type === 'telegram') {
+                const link = await storage.getUrl(fileInfo.file_id);
+                if (link) {
+                    const response = await axios({ method: 'get', url: link, responseType: 'stream' });
+                    response.data.pipe(res);
+                } else { res.status(404).send('無法獲取文件鏈接'); }
+            } else { // 本地儲存
+                if (fs.existsSync(fileInfo.file_id)) {
+                    res.download(fileInfo.file_id, fileInfo.fileName);
+                } else {
+                    res.status(404).send('本地檔案不存在');
+                }
+            }
+        } else { res.status(404).send('文件信息未找到'); }
+    } catch (error) { res.status(500).send('下載代理失敗'); }
+});
+
+app.get('/file/content/:message_id', requireLogin, async (req, res) => {
+    try {
+        const messageId = parseInt(req.params.message_id, 10);
+        const [fileInfo] = await data.getFilesByIds([messageId], req.session.userId);
+
+        if (fileInfo && fileInfo.file_id) {
+            const storage = storageManager.getStorage();
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+
+            if (fileInfo.storage_type === 'telegram') {
+                const link = await storage.getUrl(fileInfo.file_id);
+                if (link) {
+                    const response = await axios.get(link, { responseType: 'text' });
+                    res.send(response.data);
+                } else { res.status(404).send('無法獲取文件鏈接'); }
+            } else { // 本地儲存
+                if (fs.existsSync(fileInfo.file_id)) {
+                    const content = await fs.promises.readFile(fileInfo.file_id, 'utf-8');
+                    res.send(content);
+                } else {
+                    res.status(404).send('本地檔案不存在');
+                }
+            }
+        } else { res.status(404).send('文件信息未找到'); }
+    } catch (error) { res.status(500).send('無法獲取文件內容'); }
+});
+
+app.post('/api/download-archive', requireLogin, async (req, res) => {
+    try {
+        const { messageIds = [], folderIds = [] } = req.body;
+        const userId = req.session.userId;
+        const storage = storageManager.getStorage();
+
+        if (messageIds.length === 0 && folderIds.length === 0) {
+            return res.status(400).send('未提供任何項目 ID');
+        }
+        let filesToArchive = [];
+        if (messageIds.length > 0) {
+            const directFiles = await data.getFilesByIds(messageIds, userId);
+            filesToArchive.push(...directFiles.map(f => ({ ...f, path: f.fileName })));
+        }
+        for (const folderId of folderIds) {
+            const folderInfo = (await data.getFolderPath(folderId, userId)).pop();
+            const folderName = folderInfo ? folderInfo.name : 'folder';
+            const nestedFiles = await data.getFilesRecursive(folderId, userId, folderName);
+            filesToArchive.push(...nestedFiles);
+        }
+        if (filesToArchive.length === 0) {
+            return res.status(404).send('找不到任何可下載的檔案');
+        }
+        
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        res.attachment('download.zip');
+        archive.pipe(res);
+
+        for (const file of filesToArchive) {
+            if (file.storage_type === 'telegram') {
+                const link = await storage.getUrl(file.file_id);
+                if (link) {
+                    const response = await axios({ url: link, method: 'GET', responseType: 'stream' });
+                    archive.append(response.data, { name: file.path });
+                }
+            } else { // 本地儲存
+                if (fs.existsSync(file.file_id)) {
+                    archive.file(file.file_id, { name: file.path });
+                }
+            }
+        }
+        await archive.finalize();
+    } catch (error) {
+        res.status(500).send('壓縮檔案時發生錯誤');
+    }
+});
+
+
+// --- 分享相關路由 ---
 app.post('/share', requireLogin, async (req, res) => {
     const { messageId, expiresIn } = req.body;
     const result = await data.createShareLink(parseInt(messageId, 10), expiresIn, req.session.userId);
@@ -308,14 +431,14 @@ app.get('/share/view/:token', async (req, res) => {
             let textContent = null;
             if (fileInfo.mimetype && fileInfo.mimetype.startsWith('text/')) {
                 const storage = storageManager.getStorage();
-                if(storage.type === 'telegram') {
+                if(fileInfo.storage_type === 'telegram') {
                     const link = await storage.getUrl(fileInfo.file_id);
                     if (link) {
                         const response = await axios.get(link, { responseType: 'text' });
                         textContent = response.data;
                     }
                 } else {
-                    textContent = await fs.readFile(fileInfo.file_id, 'utf-8');
+                    textContent = await fs.promises.readFile(fileInfo.file_id, 'utf-8');
                 }
             }
             res.render('share-view', { file: fileInfo, downloadUrl, textContent });
@@ -332,18 +455,18 @@ app.get('/share/download/:token', async (req, res) => {
         if (fileInfo && fileInfo.file_id) {
             const storage = storageManager.getStorage();
             res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileInfo.fileName)}`);
-            if (storage.type === 'telegram') {
+            if (fileInfo.storage_type === 'telegram') {
                 const link = await storage.getUrl(fileInfo.file_id);
                 if (link) {
                     const response = await axios({ method: 'get', url: link, responseType: 'stream' });
                     response.data.pipe(res);
                 } else { res.status(404).send('無法獲取文件鏈接'); }
             } else {
-                res.sendFile(fileInfo.file_id);
+                res.download(fileInfo.file_id, fileInfo.fileName);
             }
         } else { res.status(404).send('文件信息未找到或分享鏈接已過期'); }
     } catch (error) { res.status(500).send('下載失敗'); }
 });
 
 
-app.listen(PORT, () => console.log(`✅ 服務器已在 http://localhost:${PORT} 上運行`));
+app.listen(PORT, () => console.log(`✅ 伺服器已在 http://localhost:${PORT} 上運行`));
