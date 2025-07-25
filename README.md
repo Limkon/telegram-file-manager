@@ -53,15 +53,15 @@ bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Limkon/telegram-file-ma
 #### 2. 設定環境變數
 安裝腳本執行完畢後，您需要在專案根目錄下手動建立一個名為 .env 的檔案，並填入以下內容：
 
-# 必填：從 @BotFather 取得您的 Telegram Bot Token
+**必填：從 @BotFather 取得您的 Telegram Bot Token
 BOT_TOKEN=your_bot_token_here
 
-# 必填：您的 Telegram 頻道的 ID (必須為私有頻道，並將 Bot 設為管理員)
+** 必填：您的 Telegram 頻道的 ID (必須為私有頻道，並將 Bot 設為管理員)
 CHANNEL_ID=your_channel_id_here
 
-# 必填：設定網站的初始管理員帳號
+**必填：設定網站的初始管理員帳號
 ADMIN_USER=admin
 ADMIN_PASS=your_admin_password
 
-# 必填：用於加密 Session 的隨機密鑰，請換成一個複雜的隨機字串
+**必填：用於加密 Session 的隨機密鑰，請換成一個複雜的隨機字串
 SESSION_SECRET=a8e2a32e9b1c7d5f6a7b3c4d5e8f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f
