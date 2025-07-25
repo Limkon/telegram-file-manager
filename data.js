@@ -61,7 +61,6 @@ function deleteUser(userId) {
     });
 }
 
-
 // --- 檔案搜尋 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
@@ -245,6 +244,23 @@ function getFolderByShareToken(token) {
     });
 }
 
+// --- *** 新增部分 開始 *** ---
+function findFileInSharedFolder(fileId, folderToken) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT f.*
+            FROM files f
+            JOIN folders fo ON f.folder_id = fo.id
+            WHERE f.message_id = ? AND fo.share_token = ?
+        `;
+        db.get(sql, [fileId, folderToken], (err, row) => {
+            if (err) return reject(err);
+            resolve(row); 
+        });
+    });
+}
+// --- *** 新增部分 結束 *** ---
+
 function renameFile(messageId, newFileName, userId) {
     const sql = `UPDATE files SET fileName = ? WHERE message_id = ? AND user_id = ?`;
     return new Promise((resolve, reject) => {
@@ -341,7 +357,6 @@ function cancelShare(itemId, itemType, userId) {
         });
     });
 }
-
 function checkNameConflict(itemNames, targetFolderId, userId) {
     return new Promise((resolve, reject) => {
         if (!itemNames || itemNames.length === 0) {
@@ -385,6 +400,7 @@ module.exports = {
     moveItems, 
     getFileByShareToken, 
     getFolderByShareToken,
+    findFileInSharedFolder,
     createShareLink, 
     getActiveShares, 
     cancelShare, 
