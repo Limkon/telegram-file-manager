@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分享的資料夾: <%= folder.name %></title>
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="/manager.css">
+    <style>
+        body { padding: 20px; }
+        .item-card { cursor: pointer; text-decoration: none; color: inherit; }
+        .item-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .item-icon video { width: 100%; height: 100%; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <h1><i class="fas fa-folder-open"></i> 分享的資料夾: <%= folder.name === '/' ? '根目录' : folder.name %></h1>
+        </header>
+
+        <div class="item-grid">
+            <% contents.folders.forEach(f => { %>
+                <a href="/share/view/folder/<%= f.share_token %>" class="item-card" data-id="<%= f.id %>" data-type="folder">
+                    <div class="item-icon"><i class="fas fa-folder"></i></div>
+                    <div class="item-info"><h5 title="<%= f.name %>"><%= f.name %></h5></div>
+                </a>
+            <% }); %>
+            <% contents.files.forEach(f => { %>
+                <a href="/download/proxy/<%= f.id %>" class="item-card" data-id="<%= f.id %>" data-type="file">
+                    <div class="item-icon">
+                        <% if (f.storage_type === 'telegram' && f.thumb_file_id) { %>
+                            <img src="/thumbnail/<%= f.id %>" alt="縮圖" loading="lazy">
+                        <% } else if (f.mimetype && f.mimetype.startsWith('image/')) { %>
+                            <img src="/download/proxy/<%= f.id %>" alt="圖片" loading="lazy">
+                        <% } else if (f.mimetype && f.mimetype.startsWith('video/')) { %>
+                            <video src="/download/proxy/<%= f.id %>#t=0.1" preload="metadata" muted></video>
+                        <% } else { %>
+                            <i class="fas <%= f.mimetype && f.mimetype.startsWith('text/') ? 'fa-file-alt' : 'fa-file' %>"></i>
+                        <% } %>
+                    </div>
+                    <div class="item-info"><h5 title="<%= f.fileName %>"><%= f.fileName %></h5></div>
+                </a>
+            <% }); %>
+        </div>
+
+        <% if (contents.folders.length === 0 && contents.files.length === 0) { %>
+            <p style="text-align: center; color: #6c757d;">這個分享的資料夾是空的。</p>
+        <% } %>
+    </div>
+</body>
+</html>
