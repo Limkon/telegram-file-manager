@@ -48,7 +48,7 @@
 
 **使用 `curl` (推薦):**
 ```bash
-bash -c "$(curl -fsSL [https://raw.githubusercontent.com/Limkon/telegram-file-manager/master/install.sh](https://raw.githubusercontent.com/Limkon/telegram-file-manager/master/install.sh))"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Limkon/telegram-file-manager/master/install.sh)"
  ```
 #### 2. 設定環境變數
 安裝腳本執行完畢後，您需要在專案根目錄下手動建立一個名為 .env 的檔案，並填入以下內容：
