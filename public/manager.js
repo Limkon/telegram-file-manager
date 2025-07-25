@@ -16,7 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
-    const textEditBtn = document.getElementById('textEditBtn'); // 新增
+    const textEditBtn = document.getElementById('textEditBtn');
+    const logoutBtn = document.getElementById('logoutBtn'); // 新增
+    const changePasswordBtn = document.getElementById('changePasswordBtn'); // 新增
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -189,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
-        actionBar.classList.toggle('visible', count > 0 || textEditBtn); // 讓工具列在未選擇時也可能為文字編輯按鈕顯示
+        actionBar.classList.toggle('visible', count > 0 || textEditBtn);
     };
     const rerenderSelection = () => {
         document.querySelectorAll('.item-card').forEach(card => {
@@ -316,6 +318,41 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // --- 事件監聽 ---
+    // --- *** 新增部分 開始 *** ---
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            window.location.href = '/logout';
+        });
+    }
+
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', async () => {
+            const newPassword = prompt('請輸入您的新密碼：');
+            if (!newPassword) return;
+
+            if (newPassword.length < 4) {
+                alert('密碼長度至少需要 4 個字元。');
+                return;
+            }
+
+            const confirmPassword = prompt('請再次輸入新密碼以確認：');
+            if (newPassword !== confirmPassword) {
+                alert('兩次輸入的密碼不一致！');
+                return;
+            }
+
+            try {
+                const res = await axios.post('/api/user/change-password', { newPassword });
+                if (res.data.success) {
+                    alert('密碼修改成功！');
+                }
+            } catch (error) {
+                alert('密碼修改失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+            }
+        });
+    }
+    // --- *** 新增部分 結束 *** ---
+
     if (uploadForm) {
         fileInput.addEventListener('change', () => {
             fileListContainer.innerHTML = '';
@@ -502,7 +539,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = currentFolderContents.files.find(f => f.id == messageId);
             if (!file) return;
 
-            // 如果是文字檔，直接在新分頁打開編輯器
             if (file.name.endsWith('.txt')) {
                 window.open(`/editor?mode=edit&fileId=${file.id}`, '_blank');
                 return;
@@ -725,30 +761,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
     
-    // --- *** 新增部分 開始 *** ---
     if (textEditBtn) {
         textEditBtn.addEventListener('click', () => {
             if (textEditBtn.disabled) return;
 
             const selectionCount = selectedItems.size;
             if (selectionCount === 0) {
-                // 建立新檔案
                 window.open(`/editor?mode=create&folderId=${currentFolderId}`, '_blank');
             } else {
-                // 編輯檔案
                 const fileId = selectedItems.keys().next().value;
                 window.open(`/editor?mode=edit&fileId=${fileId}`, '_blank');
             }
         });
     }
 
-    // 監聽來自編輯器子視窗的訊息
     window.addEventListener('message', (event) => {
         if (event.data === 'refresh-files') {
             loadFolderContents(currentFolderId);
         }
     });
-    // --- *** 新增部分 結束 *** ---
 
     if (document.getElementById('itemGrid')) {
         const pathParts = window.location.pathname.split('/');
