@@ -199,6 +199,19 @@ function renameFile(messageId, newFileName, userId) {
     });
 }
 
+// --- *** 新增部分 開始 *** ---
+function renameFolder(folderId, newFolderName, userId) {
+    const sql = `UPDATE folders SET name = ? WHERE id = ? AND user_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [newFolderName, folderId, userId], function(err) {
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '資料夾未找到。' });
+            else resolve({ success: true });
+        });
+    });
+}
+// --- *** 新增部分 結束 *** ---
+
 function createShareLink(messageId, expiresIn, userId) {
     const token = crypto.randomBytes(16).toString('hex');
     let expiresAt = null;
@@ -298,6 +311,7 @@ module.exports = {
     getActiveSharedFiles, 
     cancelShare, 
     renameFile, 
+    renameFolder, // <-- 匯出新函式
     deleteFilesByIds,
     findFileInFolder,
     checkNameConflict
