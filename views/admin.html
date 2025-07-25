@@ -70,7 +70,7 @@
 
             saveBtn.addEventListener('click', async () => {
                 const newMode = storageSelect.value;
-                if (!confirm(`確定要將儲存模式切換為 "${newMode}" 嗎？\n此操作需要重新啟動伺服器才能生效。`)) {
+                if (!confirm(`確定要將儲存模式切換為 "${newMode}" 嗎？`)) {
                     return;
                 }
                 try {
