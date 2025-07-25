@@ -266,8 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isDrag) {
             submitButton.disabled = true;
             submitButton.textContent = '上傳中...';
-        } else {
-            uploadModal.style.display = 'none';
         }
         
         try {
@@ -280,6 +278,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (res.data.success) {
                 showNotification('上傳成功！', 'success');
+                if (!isDrag) {
+                    uploadModal.style.display = 'none';
+                }
                 loadFolderContents(currentFolderId);
             } else {
                 showNotification('上傳失敗', 'error', !isDrag ? uploadNotificationArea : null);
@@ -319,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-    
+
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -337,31 +338,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const files = [];
-            const items = e.dataTransfer.items;
+            const files = Array.from(e.dataTransfer.files);
             let hasFolder = false;
-            if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const entry = items[i].webkitGetAsEntry();
-                    if (entry) {
-                        if (entry.isFile) {
-                            items[i].getAsFile && files.push(items[i].getAsFile());
-                        } else if (entry.isDirectory) {
-                            hasFolder = true;
-                        }
+            if (e.dataTransfer.items) {
+                for(let i=0; i<e.dataTransfer.items.length; i++) {
+                    const item = e.dataTransfer.items[i];
+                    if (typeof item.webkitGetAsEntry === "function" && item.webkitGetAsEntry().isDirectory) {
+                        hasFolder = true;
+                        break;
                     }
                 }
             }
+
             if (hasFolder) {
                 showNotification('不支援拖拽資料夾上傳，請選擇檔案。', 'error');
+                return;
             }
+            
             if (files.length > 0) {
                 uploadFiles(files, currentFolderId, true);
             }
         });
     }
     
-    // ... (剩下的程式碼與之前相同) ...
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
