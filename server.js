@@ -146,6 +146,24 @@ app.post('/api/check-existence', requireLogin, async (req, res) => {
     }
 });
 
+app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
+    try {
+        const { itemIds, targetFolderId } = req.body;
+        if (!itemIds || !Array.isArray(itemIds) || !targetFolderId) {
+            return res.status(400).json({ success: false, message: '無效的請求參數。' });
+        }
+
+        const filesToMove = await data.getFilesByIds(itemIds);
+        const fileNamesToMove = filesToMove.map(f => f.fileName);
+
+        const conflictingFiles = await data.checkNameConflict(fileNamesToMove, targetFolderId);
+
+        res.json({ success: true, conflicts: conflictingFiles });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '檢查名稱衝突時出錯。' });
+    }
+});
+
 app.get('/api/folder/:id', requireLogin, async (req, res) => {
     try {
         const folderId = parseInt(req.params.id, 10);
@@ -170,8 +188,25 @@ app.get('/api/folders', requireLogin, async (req, res) => {
 });
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
-        const { itemIds, targetFolderId } = req.body;
-        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) return res.status(400).json({ success: false, message: '無效的請求參數。' });
+        const { itemIds, targetFolderId, overwrite } = req.body;
+        if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) {
+            return res.status(400).json({ success: false, message: '無效的請求參數。' });
+        }
+        
+        if (overwrite) {
+            const filesToMove = await data.getFilesByIds(itemIds);
+            const fileNamesToMove = filesToMove.map(f => f.fileName);
+            
+            const existingFiles = await Promise.all(
+                fileNamesToMove.map(name => data.findFileInFolder(name, targetFolderId))
+            );
+            const messageIdsToDelete = existingFiles.filter(f => f).map(f => f.message_id);
+
+            if (messageIdsToDelete.length > 0) {
+                await deleteMessages(messageIdsToDelete);
+            }
+        }
+
         await data.moveItems(itemIds, targetFolderId);
         res.json({ success: true });
     } catch (error) { res.status(500).json({ success: false, message: '移動失敗' }); }
