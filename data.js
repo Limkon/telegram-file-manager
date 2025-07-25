@@ -1,13 +1,24 @@
 const db = require('./database.js');
 const crypto = require('crypto');
-const path = require('path'); // --- *** 關鍵修正 1：引入 Node.js 的 path 模組 *** ---
+const path = require('path');
+
+// --- 新增函式：在指定資料夾中尋找檔案 ---
+function findFileInFolder(fileName, folderId) {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT message_id FROM files WHERE fileName = ? AND folder_id = ?`;
+        db.get(sql, [fileName, folderId], (err, row) => {
+            if (err) return reject(err);
+            resolve(row); // 如果找到，返回 { message_id: ... }，否則返回 undefined
+        });
+    });
+}
 
 // --- 搜尋檔案 ---
 function searchFiles(query) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
                      FROM files 
-                     WHERE name LIKE ? 
+                     WHERE fileName LIKE ? 
                      ORDER BY date DESC`;
         const searchQuery = `%${query}%`;
         db.all(sql, [searchQuery], (err, files) => {
@@ -40,39 +51,37 @@ async function getFilesRecursive(folderId, currentPath = '') {
     const sqlFiles = "SELECT * FROM files WHERE folder_id = ?";
     const files = await new Promise((res, rej) => db.all(sqlFiles, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const file of files) {
-        // --- *** 關鍵修正 2：使用正確的 path.join *** ---
         allFiles.push({ ...file, path: path.join(currentPath, file.fileName) });
     }
 
     const sqlFolders = "SELECT id, name FROM folders WHERE parent_id = ?";
     const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [folderId], (err, rows) => err ? rej(err) : res(rows)));
     for (const subFolder of subFolders) {
-        // --- *** 關鍵修正 3：使用正確的 path.join *** ---
         const nestedFiles = await getFilesRecursive(subFolder.id, path.join(currentPath, subFolder.name));
         allFiles.push(...nestedFiles);
     }
     return allFiles;
 }
 
-
 function getFolderPath(folderId) {
-    let path = [];
+    let pathArr = [];
     return new Promise((resolve, reject) => {
         function findParent(id) {
-            if (!id) return resolve(path.reverse());
+            if (!id) return resolve(pathArr.reverse());
             db.get("SELECT id, name, parent_id FROM folders WHERE id = ?", [id], (err, folder) => {
                 if (err) return reject(err);
                 if (folder) {
-                    path.push({ id: folder.id, name: folder.name });
+                    pathArr.push({ id: folder.id, name: folder.name });
                     findParent(folder.parent_id);
                 } else {
-                    resolve(path.reverse());
+                    resolve(pathArr.reverse());
                 }
             });
         }
         findParent(folderId);
     });
 }
+
 function createFolder(name, parentId = 1) {
     const sql = `INSERT INTO folders (name, parent_id) VALUES (?, ?)`;
     return new Promise((resolve, reject) => {
@@ -85,6 +94,7 @@ function createFolder(name, parentId = 1) {
         });
     });
 }
+
 function getAllFolders() {
     return new Promise((resolve, reject) => {
         const sql = "SELECT id, name, parent_id FROM folders ORDER BY parent_id, name ASC";
@@ -94,6 +104,7 @@ function getAllFolders() {
         });
     });
 }
+
 function moveItems(itemIds, targetFolderId) {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
@@ -110,6 +121,7 @@ function moveItems(itemIds, targetFolderId) {
         });
     });
 }
+
 async function deleteFolderRecursive(folderId) {
     let filesToDelete = [];
     let foldersToDelete = [folderId];
@@ -130,6 +142,7 @@ async function deleteFolderRecursive(folderId) {
     await new Promise((res, rej) => db.run(deleteFoldersSql, foldersToDelete, (err) => err ? rej(err) : res()));
     return filesToDelete;
 }
+
 function addFile(fileData, folderId = 1) {
     const { message_id, fileName, mimetype, file_id, thumb_file_id, date } = fileData;
     const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, folder_id)
@@ -141,6 +154,7 @@ function addFile(fileData, folderId = 1) {
         });
     });
 }
+
 function getFilesByIds(messageIds) {
     const placeholders = messageIds.map(() => '?').join(',');
     const sql = `SELECT * FROM files WHERE message_id IN (${placeholders})`;
@@ -151,6 +165,7 @@ function getFilesByIds(messageIds) {
         });
     });
 }
+
 function getFileByShareToken(token) {
      return new Promise((resolve, reject) => {
         const sql = "SELECT * FROM files WHERE share_token = ?";
@@ -167,6 +182,7 @@ function getFileByShareToken(token) {
         });
     });
 }
+
 function renameFile(messageId, newFileName) {
     const sql = `UPDATE files SET fileName = ? WHERE message_id = ?`;
     return new Promise((resolve, reject) => {
@@ -177,6 +193,7 @@ function renameFile(messageId, newFileName) {
         });
     });
 }
+
 function createShareLink(messageId, expiresIn) {
     const token = crypto.randomBytes(16).toString('hex');
     let expiresAt = null;
@@ -202,6 +219,7 @@ function createShareLink(messageId, expiresIn) {
         });
     });
 }
+
 function deleteFilesByIds(messageIds) {
     const placeholders = messageIds.map(() => '?').join(',');
     const sql = `DELETE FROM files WHERE message_id IN (${placeholders})`;
@@ -212,6 +230,7 @@ function deleteFilesByIds(messageIds) {
         });
     });
 }
+
 function getActiveSharedFiles() {
     const sql = "SELECT * FROM files WHERE share_token IS NOT NULL AND (share_expires_at IS NULL OR share_expires_at > ?)";
     return new Promise((resolve, reject) => {
@@ -221,6 +240,7 @@ function getActiveSharedFiles() {
         });
     });
 }
+
 function cancelShare(messageId) {
     const sql = `UPDATE files SET share_token = NULL, share_expires_at = NULL WHERE message_id = ?`;
     return new Promise((resolve, reject) => {
@@ -231,4 +251,23 @@ function cancelShare(messageId) {
         });
     });
 }
-module.exports = { searchFiles, getFolderContents, getFilesRecursive, getFolderPath, createFolder, getAllFolders, deleteFolderRecursive, addFile, getFilesByIds, moveItems, getFileByShareToken, createShareLink, getActiveSharedFiles, cancelShare, renameFile, deleteFilesByIds, };
+
+module.exports = {
+    searchFiles,
+    getFolderContents,
+    getFilesRecursive,
+    getFolderPath,
+    createFolder,
+    getAllFolders,
+    deleteFolderRecursive,
+    addFile,
+    getFilesByIds,
+    moveItems,
+    getFileByShareToken,
+    createShareLink,
+    getActiveSharedFiles,
+    cancelShare,
+    renameFile,
+    deleteFilesByIds,
+    findFileInFolder
+};
