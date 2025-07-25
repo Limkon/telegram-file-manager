@@ -89,7 +89,6 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// --- *** 新增部分 開始 *** ---
 app.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
@@ -99,7 +98,6 @@ app.get('/logout', (req, res) => {
         res.redirect('/login');
     });
 });
-// --- *** 新增部分 結束 *** ---
 
 app.get('/', requireLogin, (req, res) => {
     db.get("SELECT id FROM folders WHERE user_id = ? AND parent_id IS NULL", [req.session.userId], (err, rootFolder) => {
@@ -127,22 +125,34 @@ app.get('/local-files/:userId/:fileId', requireLogin, (req, res) => {
 
 
 // --- API 接口 ---
-// --- *** 新增部分 開始 *** ---
+// --- *** 修改部分 開始 *** ---
 app.post('/api/user/change-password', requireLogin, async (req, res) => {
-    const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-        return res.status(400).json({ success: false, message: '密碼長度至少需要 4 個字元。' });
+    const { oldPassword, newPassword } = req.body;
+    
+    if (!oldPassword || !newPassword || newPassword.length < 4) {
+        return res.status(400).json({ success: false, message: '請提供舊密碼和新密碼，且新密碼長度至少 4 個字元。' });
     }
     try {
+        const user = await data.findUserById(req.session.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: '找不到使用者。' });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: '舊密碼不正確。' });
+        }
+        
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
         await data.changeUserPassword(req.session.userId, hashedPassword);
+        
         res.json({ success: true, message: '密碼修改成功。' });
     } catch (error) {
         res.status(500).json({ success: false, message: '修改密碼失敗。' });
     }
 });
-// --- *** 新增部分 結束 *** ---
+// --- *** 修改部分 結束 *** ---
 
 app.get('/api/admin/storage-mode', requireAdmin, (req, res) => {
     res.json({ mode: storageManager.readConfig().storageMode });
@@ -157,7 +167,6 @@ app.post('/api/admin/storage-mode', requireAdmin, (req, res) => {
     }
 });
 
-// --- *** 新增部分 開始 *** ---
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
     try {
         const users = await data.listNormalUsers();
@@ -210,7 +219,6 @@ app.post('/api/admin/delete-user', requireAdmin, async (req, res) => {
         res.status(500).json({ success: false, message: '刪除使用者失敗。' });
     }
 });
-// --- *** 新增部分 結束 *** ---
 
 
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
