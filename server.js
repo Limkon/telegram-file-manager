@@ -104,10 +104,18 @@ app.get('/api/search', requireLogin, async (req, res) => {
 });
 app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, async (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ success: false, message: '沒有選擇文件' });
-    const folderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
+    const initialFolderId = req.body.folderId ? parseInt(req.body.folderId, 10) : 1;
     const results = [];
     for (const file of req.files) {
-        const result = await sendFile(file.buffer, file.originalname, file.mimetype, req.body.caption || '', folderId);
+        const pathParts = file.originalname.split('/').filter(p => p);
+        const fileName = pathParts.pop();
+        let parentFolderId = initialFolderId;
+
+        if (pathParts.length > 0) {
+            parentFolderId = await data.findOrCreateFolderByPath(initialFolderId, pathParts.join('/'));
+        }
+
+        const result = await sendFile(file.buffer, fileName, file.mimetype, req.body.caption || '', parentFolderId);
         results.push(result);
     }
     res.json({ success: true, results });
