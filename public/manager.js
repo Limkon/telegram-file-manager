@@ -189,8 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
         
-        // --- *** 關鍵修正 *** ---
-        // 允許在選中一個檔案或一個資料夾時啟用分享按鈕
         if (shareBtn) shareBtn.disabled = count !== 1;
         
         if (renameBtn) renameBtn.disabled = count !== 1;
@@ -541,6 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadModal.style.display = 'none';
         });
     }
+
+    // --- *** 關鍵修正 開始 *** ---
     if (previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
@@ -548,19 +548,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = currentFolderContents.files.find(f => f.id == messageId);
             if (!file) return;
 
-            if (file.name.endsWith('.txt')) {
-                window.open(`/editor?mode=edit&fileId=${file.id}`, '_blank');
-                return;
-            }
-
+            // 移除原本跳轉到編輯器的邏輯
+            
             previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
             const downloadUrl = `/download/proxy/${messageId}`;
+
             if (file.mimetype && file.mimetype.startsWith('image/')) {
                 modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片預覽">`;
             } else if (file.mimetype && file.mimetype.startsWith('video/')) {
                 modalContent.innerHTML = `<video src="${downloadUrl}" controls autoplay></video>`;
-            } else if (file.mimetype && file.mimetype.startsWith('text/')) {
+            } else if (file.mimetype && (file.mimetype.startsWith('text/') || file.name.endsWith('.txt'))) { // 讓 .txt 也符合此條件
                 try {
                     const res = await axios.get(`/file/content/${messageId}`);
                     const escapedContent = res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -573,6 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    // --- *** 關鍵修正 結束 *** ---
+
     if (renameBtn) {
         renameBtn.addEventListener('click', async () => {
              if (renameBtn.disabled) return;
