@@ -5,30 +5,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadSharedFiles = async () => {
         try {
-            const response = await axios.get('/api/shared-files');
-            const files = response.data;
+            const response = await axios.get('/api/shares');
+            const shares = response.data;
 
             loadingMessage.style.display = 'none';
             table.style.display = 'table';
             tableBody.innerHTML = '';
 
-            if (files.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前沒有任何分享中的文件。</td></tr>';
+            if (shares.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前沒有任何分享中的項目。</td></tr>';
                 return;
             }
 
-            files.forEach(file => {
-                const expires = file.share_expires_at 
-                    ? new Date(file.share_expires_at).toLocaleString() 
+            shares.forEach(item => {
+                const expires = item.share_expires_at 
+                    ? new Date(item.share_expires_at).toLocaleString() 
                     : '永久';
                 
                 const row = document.createElement('tr');
-                row.dataset.messageId = file.message_id;
+                row.dataset.itemId = item.id;
+                row.dataset.itemType = item.type;
+                
+                const icon = item.type === 'folder' ? 'fa-folder' : 'fa-file';
+                
                 row.innerHTML = `
-                    <td class="file-name" title="${file.fileName}">${file.fileName}</td>
+                    <td class="file-name" title="${item.name}"><i class="fas ${icon}" style="margin-right: 8px;"></i>${item.name}</td>
                     <td>
                         <div class="share-link">
-                            <input type="text" value="${file.share_url}" readonly>
+                            <input type="text" value="${item.share_url}" readonly>
                             <button class="copy-btn" title="複製連結"><i class="fas fa-copy"></i></button>
                         </div>
                     </td>
@@ -58,13 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (cancelBtn) {
-            if (!confirm('確定要取消這個文件的分享嗎？')) return;
+            if (!confirm('確定要取消這個項目的分享嗎？')) return;
             
             const row = cancelBtn.closest('tr');
-            const messageId = row.dataset.messageId;
+            const itemId = row.dataset.itemId;
+            const itemType = row.dataset.itemType;
             
             try {
-                await axios.post('/api/cancel-share', { messageId });
+                await axios.post('/api/cancel-share', { itemId, itemType });
                 row.remove();
             } catch (error) {
                 alert('取消分享失敗，請重試。');
