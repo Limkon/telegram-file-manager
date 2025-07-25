@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文字編輯器</title>
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <style>
         :root {
             --primary-color: #007bff;
+            --success-color: #28a745;
             --background-color: #f8f9fa;
             --text-color: #212529;
             --border-color: #dee2e6;
@@ -41,6 +43,10 @@
         .editor-header input[type="text"]:focus {
             outline: 2px solid var(--primary-color);
         }
+        .editor-actions {
+            display: flex;
+            align-items: center;
+        }
         .editor-actions button {
             padding: 8px 16px;
             border: 1px solid transparent;
@@ -53,9 +59,14 @@
             background-color: var(--primary-color);
             color: white;
         }
-        #cancelBtn {
+        #backBtn {
             background-color: #6c757d;
             color: white;
+        }
+        #saveStatus {
+            color: var(--success-color);
+            font-weight: bold;
+            margin-left: 15px;
         }
         .editor-container {
             flex-grow: 1;
@@ -83,8 +94,9 @@
     <div class="editor-header">
         <input type="text" id="fileNameInput" placeholder="請輸入檔名.txt">
         <div class="editor-actions">
+            <span id="saveStatus"></span>
             <button id="saveBtn">儲存</button>
-            <button id="cancelBtn">取消</button>
+            <button id="backBtn">返回</button>
         </div>
     </div>
     <div class="editor-container">
@@ -97,11 +109,12 @@
             const fileNameInput = document.getElementById('fileNameInput');
             const editor = document.getElementById('editor');
             const saveBtn = document.getElementById('saveBtn');
-            const cancelBtn = document.getElementById('cancelBtn');
+            const backBtn = document.getElementById('backBtn');
+            const saveStatus = document.getElementById('saveStatus');
 
             const urlParams = new URLSearchParams(window.location.search);
             const mode = urlParams.get('mode'); // 'create' or 'edit'
-            const fileId = urlParams.get('fileId');
+            let fileId = urlParams.get('fileId');
             const folderId = urlParams.get('folderId');
 
             async function loadFileContent() {
@@ -128,21 +141,36 @@
                 const content = editor.value;
                 saveBtn.disabled = true;
                 saveBtn.textContent = '儲存中...';
+                saveStatus.textContent = '';
 
                 try {
-                    await axios.post('/api/text-file', {
-                        mode,
+                    const response = await axios.post('/api/text-file', {
+                        // 如果是新建模式，第一次儲存後就變成編輯模式
+                        mode: fileId ? 'edit' : 'create', 
                         fileId: fileId,
                         folderId: folderId,
                         fileName,
                         content
                     });
                     
-                    // 通知父視窗刷新
                     if (window.opener) {
                         window.opener.postMessage('refresh-files', '*');
                     }
-                    window.close();
+                    
+                    // --- *** 修改部分 *** ---
+                    // 顯示成功提示，2秒後消失
+                    saveStatus.textContent = '✓ 已儲存';
+                    setTimeout(() => {
+                        saveStatus.textContent = '';
+                    }, 2000);
+
+                    // 如果是新建檔案，儲存後獲取新的 fileId，頁面轉換為編輯模式
+                    if (mode === 'create' && response.data.fileId) {
+                        fileId = response.data.fileId;
+                        const newUrl = `${window.location.pathname}?mode=edit&fileId=${fileId}`;
+                        history.pushState({}, '', newUrl);
+                    }
+
                 } catch (error) {
                     alert('儲存失敗：' + (error.response?.data?.message || '伺服器錯誤'));
                 } finally {
@@ -151,7 +179,7 @@
                 }
             });
 
-            cancelBtn.addEventListener('click', () => {
+            backBtn.addEventListener('click', () => {
                 window.close();
             });
 
