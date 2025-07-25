@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理後台</title>
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/manager.css">
     <style>
         .setting-card {
@@ -16,7 +17,7 @@
         .setting-card h2 {
             margin-top: 0;
         }
-        .setting-card select, .setting-card button {
+        .setting-card select, .setting-card button, .setting-card input {
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
@@ -26,6 +27,24 @@
             background-color: var(--primary-color);
             color: white;
             cursor: pointer;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .user-table th, .user-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .user-table th {
+            background-color: #f2f2f2;
+        }
+        .user-table .actions button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -49,7 +68,26 @@
             <button id="save-btn">儲存設定</button>
             <p id="save-status" style="color: green;"></p>
         </div>
-    </div>
+
+        <div class="setting-card">
+            <h2>使用者管理</h2>
+            <form id="add-user-form">
+                <input type="text" id="new-username" placeholder="新用戶名" required>
+                <input type="password" id="new-password" placeholder="新密碼 (至少4位)" required>
+                <button type="submit">新增使用者</button>
+            </form>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>使用者名稱</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body">
+                    </tbody>
+            </table>
+        </div>
+        </div>
     <script src="/vendor/axios/axios.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -57,6 +95,13 @@
             const storageSelect = document.getElementById('storage-select');
             const saveBtn = document.getElementById('save-btn');
             const saveStatus = document.getElementById('save-status');
+
+            // --- *** 新增部分 開始 *** ---
+            const addUserForm = document.getElementById('add-user-form');
+            const newUsernameInput = document.getElementById('new-username');
+            const newPasswordInput = document.getElementById('new-password');
+            const userTableBody = document.getElementById('user-table-body');
+            // --- *** 新增部分 結束 *** ---
 
             async function loadCurrentMode() {
                 try {
@@ -83,6 +128,80 @@
                     saveStatus.textContent = '儲存失敗！';
                 }
             });
+            
+            // --- *** 新增部分 開始 *** ---
+            async function loadUsers() {
+                try {
+                    const res = await axios.get('/api/admin/users');
+                    userTableBody.innerHTML = '';
+                    res.data.forEach(user => {
+                        const row = `
+                            <tr>
+                                <td>${user.username}</td>
+                                <td class="actions">
+                                    <button class="change-pass-btn" data-userid="${user.id}" data-username="${user.username}">改密碼</button>
+                                    <button class="delete-user-btn" data-userid="${user.id}" data-username="${user.username}">刪除</button>
+                                </td>
+                            </tr>
+                        `;
+                        userTableBody.innerHTML += row;
+                    });
+                } catch (error) {
+                    userTableBody.innerHTML = '<tr><td colspan="2">加載使用者失敗</td></tr>';
+                }
+            }
+
+            addUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = newUsernameInput.value.trim();
+                const password = newPasswordInput.value.trim();
+                if (!username || !password) return;
+
+                try {
+                    await axios.post('/api/admin/add-user', { username, password });
+                    newUsernameInput.value = '';
+                    newPasswordInput.value = '';
+                    alert('使用者新增成功！');
+                    loadUsers();
+                } catch (error) {
+                    alert('新增失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                }
+            });
+
+            userTableBody.addEventListener('click', async (e) => {
+                const target = e.target;
+                const userId = target.dataset.userid;
+                const username = target.dataset.username;
+
+                if (target.classList.contains('change-pass-btn')) {
+                    const newPassword = prompt(`請為使用者 "${username}" 輸入新密碼：`);
+                    if (newPassword && newPassword.length >= 4) {
+                        try {
+                            await axios.post('/api/admin/change-password', { userId, newPassword });
+                            alert(`使用者 "${username}" 的密碼已更新。`);
+                        } catch (error) {
+                            alert('密碼更新失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                        }
+                    } else if (newPassword) {
+                        alert('密碼長度至少需要 4 個字元。');
+                    }
+                }
+
+                if (target.classList.contains('delete-user-btn')) {
+                    if (confirm(`確定要刪除使用者 "${username}" 嗎？\n此操作將會刪除該使用者的所有檔案和資料夾，且無法復原！`)) {
+                        try {
+                            await axios.post('/api/admin/delete-user', { userId });
+                            alert(`使用者 "${username}" 已被刪除。`);
+                            loadUsers();
+                        } catch (error) {
+                             alert('刪除失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                        }
+                    }
+                }
+            });
+
+            loadUsers();
+            // --- *** 新增部分 結束 *** ---
 
             loadCurrentMode();
         });
