@@ -277,10 +277,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (res.data.success) {
-                showNotification('上傳成功！', 'success');
                 if (!isDrag) {
                     uploadModal.style.display = 'none';
                 }
+                showNotification('上傳成功！', 'success');
                 loadFolderContents(currentFolderId);
             } else {
                 showNotification('上傳失敗', 'error', !isDrag ? uploadNotificationArea : null);
@@ -314,13 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const files = fileInput.files;
             const targetFolderId = folderSelect.value;
             if (files.length > 0) {
-                uploadFiles(files, targetFolderId, false);
+                uploadFiles(Array.from(files), targetFolderId, false);
             } else {
                 showNotification('請選擇要上傳的檔案。', 'error', uploadNotificationArea);
             }
         };
     }
-
+    
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -338,16 +338,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const files = Array.from(e.dataTransfer.files);
+            const files = [];
+            const items = e.dataTransfer.items;
             let hasFolder = false;
-            if (e.dataTransfer.items) {
-                for(let i=0; i<e.dataTransfer.items.length; i++) {
-                    const item = e.dataTransfer.items[i];
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
                     if (typeof item.webkitGetAsEntry === "function" && item.webkitGetAsEntry().isDirectory) {
                         hasFolder = true;
                         break;
                     }
+                    if (item.kind === 'file') {
+                        files.push(item.getAsFile());
+                    }
                 }
+            } else {
+                 files.push(...Array.from(e.dataTransfer.files));
             }
 
             if (hasFolder) {
@@ -361,6 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // ... (剩下的程式碼與之前相同) ...
     if (homeLink) {
         homeLink.addEventListener('click', (e) => {
             e.preventDefault();
