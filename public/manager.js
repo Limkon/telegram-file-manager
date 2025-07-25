@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fileInput.files.length > 0) {
                 for (const file of fileInput.files) {
                     const listItem = document.createElement('li');
-                    listItem.textContent = file.name;
+                    listItem.textContent = file.webkitRelativePath || file.name;
                     fileListContainer.appendChild(listItem);
                 }
             }
@@ -222,20 +222,23 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadForm.onsubmit = async function (e) {
             e.preventDefault();
             if (fileInput.files.length === 0) { 
-                showNotification('請選擇文件', 'error', uploadNotificationArea); 
+                showNotification('請選擇文件或文件夾', 'error', uploadNotificationArea); 
                 return; 
             }
             
+            const formData = new FormData();
+            formData.append('folderId', folderSelect.value);
+            formData.append('caption', uploadForm.querySelector('input[name="caption"]').value || '');
+
             for (const file of fileInput.files) {
                 if (file.size > MAX_TELEGRAM_SIZE) {
-                    // --- *** 關鍵修正 2：將通知顯示在彈窗內 *** ---
                     showNotification(`檔案 "${file.name}" 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', uploadNotificationArea);
                     return;
                 }
+                formData.append('files', file, file.webkitRelativePath || file.name);
             }
             
             uploadNotificationArea.innerHTML = ''; // 清空舊通知
-            const formData = new FormData(uploadForm);
             const submitButton = e.target.querySelector('button[type="submit"]');
             const progressArea = document.getElementById('progressArea');
             const progressBar = document.getElementById('progressBar');
@@ -492,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     folderTree.appendChild(item);
                     node.children.forEach(child => buildTree(child, prefix + '　'));
                 };
-                tree.forEach(buildTree);
+                tree.forEach(buildOptions);
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
