@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('downloadBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const selectAllBtn = document.getElementById('selectAllBtn');
+    const textEditBtn = document.getElementById('textEditBtn'); // 新增
     const previewModal = document.getElementById('previewModal');
     const modalContent = document.getElementById('modalContent');
     const closeModal = document.querySelector('.close-button');
@@ -148,11 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 iconHtml = `<img src="/thumbnail/${item.id}" alt="縮圖" loading="lazy">`;
             } else if (fullFile.mimetype && fullFile.mimetype.startsWith('image/')) {
                  iconHtml = `<img src="/download/proxy/${item.id}" alt="圖片" loading="lazy">`;
-            // --- *** 新增部分 開始 *** ---
             } else if (fullFile.mimetype && fullFile.mimetype.startsWith('video/')) {
-                // 對於本地影片，直接使用 video 標籤來讓瀏覽器產生預覽
                 iconHtml = `<video src="/download/proxy/${item.id}#t=0.1" preload="metadata" muted></video>`;
-            // --- *** 新增部分 結束 *** ---
             } else {
                  iconHtml = `<i class="fas ${getFileIconClass(item.mimetype)}"></i>`;
             }
@@ -178,15 +176,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const count = selectedItems.size;
         selectionCountSpan.textContent = `已選擇 ${count} 個項目`;
         if (downloadBtn) downloadBtn.disabled = count === 0;
+        
+        const isSingleTextFile = count === 1 && selectedItems.values().next().value.name.endsWith('.txt');
+        if (textEditBtn) {
+            textEditBtn.disabled = !(count === 0 || isSingleTextFile);
+            textEditBtn.innerHTML = count === 0 ? '<i class="fas fa-file-alt"></i>' : '<i class="fas fa-edit"></i>';
+            textEditBtn.title = count === 0 ? '新建文字檔' : '編輯文字檔';
+        }
+
         if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
         if (shareBtn) shareBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
-        actionBar.classList.toggle('visible', count > 0);
-        if (!isMultiSelectMode && multiSelectBtn) {
-            multiSelectBtn.classList.remove('active');
-        }
+        actionBar.classList.toggle('visible', count > 0 || textEditBtn); // 讓工具列在未選擇時也可能為文字編輯按鈕顯示
     };
     const rerenderSelection = () => {
         document.querySelectorAll('.item-card').forEach(card => {
@@ -498,6 +501,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const messageId = selectedItems.keys().next().value;
             const file = currentFolderContents.files.find(f => f.id == messageId);
             if (!file) return;
+
+            // 如果是文字檔，直接在新分頁打開編輯器
+            if (file.name.endsWith('.txt')) {
+                window.open(`/editor?mode=edit&fileId=${file.id}`, '_blank');
+                return;
+            }
+
             previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
             const downloadUrl = `/download/proxy/${messageId}`;
@@ -715,6 +725,31 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (cancelMoveBtn) cancelMoveBtn.addEventListener('click', () => moveModal.style.display = 'none');
     
+    // --- *** 新增部分 開始 *** ---
+    if (textEditBtn) {
+        textEditBtn.addEventListener('click', () => {
+            if (textEditBtn.disabled) return;
+
+            const selectionCount = selectedItems.size;
+            if (selectionCount === 0) {
+                // 建立新檔案
+                window.open(`/editor?mode=create&folderId=${currentFolderId}`, '_blank');
+            } else {
+                // 編輯檔案
+                const fileId = selectedItems.keys().next().value;
+                window.open(`/editor?mode=edit&fileId=${fileId}`, '_blank');
+            }
+        });
+    }
+
+    // 監聽來自編輯器子視窗的訊息
+    window.addEventListener('message', (event) => {
+        if (event.data === 'refresh-files') {
+            loadFolderContents(currentFolderId);
+        }
+    });
+    // --- *** 新增部分 結束 *** ---
+
     if (document.getElementById('itemGrid')) {
         const pathParts = window.location.pathname.split('/');
         const folderId = parseInt(pathParts[pathParts.length - 1], 10);
