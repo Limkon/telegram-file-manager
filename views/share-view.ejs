@@ -12,6 +12,9 @@
             margin: 0;
             background-color: #f0f2f5;
             color: #1c1e21;
+        }
+        
+        .center-container {
             display: flex;
             justify-content: center;
             align-items: center;
@@ -20,14 +23,17 @@
 
         /* --- 文字檔案專用樣式 --- */
         body.text-mode {
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #ffffff; /* 純白背景 */
+        }
+        
+        pre {
+            /* 關鍵修正：移除所有內外邊距，讓文字頂格顯示 */
+            margin: 0;
+            padding: 1em; /* 只保留少量內部邊距以方便閱讀 */
             white-space: pre-wrap;
             word-wrap: break-word;
-            padding: 2em;
-            margin: 0;
-            background-color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
             color: #333;
-            display: block; /* 覆蓋通用樣式 */
         }
 
         /* --- 非文字檔案的預覽卡片樣式 --- */
@@ -90,44 +96,46 @@
 </head>
 <body class="<%- textContent ? 'text-mode' : '' %>">
 
-<% if (textContent) { -%>
-<%- textContent %>
-<% } else { -%>
-    <div class="share-container">
-        <% 
-            let iconClass = 'fa-file-alt';
-            if (file.mimetype) {
-                if (file.mimetype.startsWith('image/')) iconClass = 'fa-file-image';
-                else if (file.mimetype.startsWith('video/')) iconClass = 'fa-file-video';
-                else if (file.mimetype.includes('pdf')) iconClass = 'fa-file-pdf';
-                else if (file.mimetype.includes('archive') || file.mimetype.includes('zip')) iconClass = 'fa-file-archive';
-            }
-        %>
-        <div class="file-icon">
-            <i class="fas <%= iconClass %>"></i>
+    <% if (textContent) { %>
+        <pre><%- textContent %></pre>
+    <% } else { %>
+        <div class="center-container">
+            <div class="share-container">
+                <% 
+                    let iconClass = 'fa-file-alt';
+                    if (file.mimetype) {
+                        if (file.mimetype.startsWith('image/')) iconClass = 'fa-file-image';
+                        else if (file.mimetype.startsWith('video/')) iconClass = 'fa-file-video';
+                        else if (file.mimetype.includes('pdf')) iconClass = 'fa-file-pdf';
+                        else if (file.mimetype.includes('archive') || file.mimetype.includes('zip')) iconClass = 'fa-file-archive';
+                    }
+                %>
+                <div class="file-icon">
+                    <i class="fas <%= iconClass %>"></i>
+                </div>
+                
+                <h2><%= file.fileName %></h2>
+                
+                <% if (file.share_expires_at) { %>
+                    <p class="file-info">此分享將於 <%= new Date(file.share_expires_at).toLocaleString() %> 過期</p>
+                <% } else { %>
+                    <p class="file-info">此分享永久有效</p>
+                <% } %>
+    
+                <a href="<%= downloadUrl %>" class="download-btn">
+                    <i class="fas fa-download"></i> 下載檔案
+                </a>
+    
+                <div class="preview-container">
+                    <% if (file.mimetype && file.mimetype.startsWith('image/')) { %>
+                        <img src="<%= downloadUrl %>" alt="圖片預覽">
+                    <% } else if (file.mimetype && file.mimetype.startsWith('video/')) { %>
+                        <video src="<%= downloadUrl %>" controls preload="metadata"></video>
+                    <% } %>
+                </div>
+            </div>
         </div>
-        
-        <h2><%= file.fileName %></h2>
-        
-        <% if (file.share_expires_at) { %>
-            <p class="file-info">此分享將於 <%= new Date(file.share_expires_at).toLocaleString() %> 過期</p>
-        <% } else { %>
-            <p class="file-info">此分享永久有效</p>
-        <% } %>
-
-        <a href="<%= downloadUrl %>" class="download-btn">
-            <i class="fas fa-download"></i> 下載檔案
-        </a>
-
-        <div class="preview-container">
-            <% if (file.mimetype && file.mimetype.startsWith('image/')) { %>
-                <img src="<%= downloadUrl %>" alt="圖片預覽">
-            <% } else if (file.mimetype && file.mimetype.startsWith('video/')) { %>
-                <video src="<%= downloadUrl %>" controls preload="metadata"></video>
-            <% } %>
-        </div>
-    </div>
-<% } -%>
+    <% } %>
 
 </body>
 </html>
