@@ -35,12 +35,11 @@
         font-size: 24px;
         font-weight: bold;
         color: #007bff;
-        pointer-events: none; /* 讓滑鼠事件穿透覆蓋層 */
+        pointer-events: none;
     }
     #dropZone.dragover #dropZoneOverlay {
         display: flex;
     }
-
     .preview-modal-content { 
         background: #ffffff;
         width: auto; 
@@ -58,15 +57,8 @@
     }
     .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
     .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
-    .no-preview {
-        color: #f1f1f1;
-        text-align: center;
-    }
-    .no-preview i {
-        font-size: 48px;
-        margin-bottom: 10px;
-        display: block;
-    }
+    .no-preview { color: #f1f1f1; text-align: center; }
+    .no-preview i { font-size: 48px; margin-bottom: 10px; display: block; }
     .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
     .share-modal-content h3 { margin-top: 0; }
     .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
@@ -123,14 +115,13 @@
             <input type="search" id="searchInput" placeholder="搜尋所有檔案...">
         </form>
     </div>
-
+    
     <div id="dropZone">
         <div class="item-grid" id="itemGrid"></div>
         <div id="dropZoneOverlay">
             <span>將文件拖到此處以上傳</span>
         </div>
     </div>
-
   </div>
 
   <div id="previewModal" class="modal">
@@ -197,6 +188,11 @@
     </div>
   </div>
 
+  <div class="progress-area" id="dragUploadProgressArea">
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="dragUploadProgressBar">0%</div>
+    </div>
+  </div>
   <div class="action-bar" id="actionBar">
     <button id="selectAllBtn" title="全選/取消全選"><i class="fas fa-check-double"></i></button>
     <span id="selectionCount">已選擇 0 個項目</span>
