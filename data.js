@@ -61,6 +61,7 @@ function deleteUser(userId) {
     });
 }
 
+
 // --- 檔案搜尋 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
@@ -95,39 +96,138 @@ function getFolderContents(folderId, userId) {
 }
 
 async function getFilesRecursive(folderId, userId, currentPath = '') {
-    // ... (此函式不變)
+    let allFiles = [];
+    const sqlFiles = "SELECT * FROM files WHERE folder_id = ? AND user_id = ?";
+    const files = await new Promise((res, rej) => db.all(sqlFiles, [folderId, userId], (err, rows) => err ? rej(err) : res(rows)));
+    for (const file of files) {
+        allFiles.push({ ...file, path: path.join(currentPath, file.fileName) });
+    }
+
+    const sqlFolders = "SELECT id, name FROM folders WHERE parent_id = ? AND user_id = ?";
+    const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [folderId, userId], (err, rows) => err ? rej(err) : res(rows)));
+    for (const subFolder of subFolders) {
+        const nestedFiles = await getFilesRecursive(subFolder.id, userId, path.join(currentPath, subFolder.name));
+        allFiles.push(...nestedFiles);
+    }
+    return allFiles;
 }
 
 function getFolderPath(folderId, userId) {
-    // ... (此函式不變)
+    let pathArr = [];
+    return new Promise((resolve, reject) => {
+        function findParent(id) {
+            if (!id) return resolve(pathArr.reverse());
+            db.get("SELECT id, name, parent_id FROM folders WHERE id = ? AND user_id = ?", [id, userId], (err, folder) => {
+                if (err) return reject(err);
+                if (folder) {
+                    pathArr.push({ id: folder.id, name: folder.name });
+                    findParent(folder.parent_id);
+                } else {
+                    resolve(pathArr.reverse());
+                }
+            });
+        }
+        findParent(folderId);
+    });
 }
 
 function createFolder(name, parentId, userId) {
-    // ... (此函式不變)
+    const sql = `INSERT INTO folders (name, parent_id, user_id) VALUES (?, ?, ?)`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [name, parentId, userId], function (err) {
+            if (err) {
+                if (err.message.includes('UNIQUE')) return reject(new Error('同目錄下已存在同名資料夾。'));
+                return reject(err);
+            }
+            resolve({ success: true, id: this.lastID });
+        });
+    });
 }
 
 function getAllFolders(userId) {
-    // ... (此函式不變)
+    return new Promise((resolve, reject) => {
+        const sql = "SELECT id, name, parent_id FROM folders WHERE user_id = ? ORDER BY parent_id, name ASC";
+        db.all(sql, [userId], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
 }
 
 function moveItems(itemIds, targetFolderId, userId) {
-    // ... (此函式不變)
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            const placeholders = itemIds.map(() => '?').join(',');
+            const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${placeholders}) AND user_id = ?`;
+            db.run(moveFilesSql, [targetFolderId, ...itemIds, userId]);
+            const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${placeholders}) AND user_id = ?`;
+            db.run(moveFoldersSql, [targetFolderId, ...itemIds, userId]);
+            resolve({ success: true });
+        });
+    });
 }
 
 async function deleteFolderRecursive(folderId, userId) {
-    // ... (此函式不變)
+    let filesToDelete = [];
+    let foldersToDelete = [folderId];
+    async function findContents(currentFolderId) {
+        const sqlFiles = `SELECT message_id, file_id, storage_type FROM files WHERE folder_id = ? AND user_id = ?`;
+        const files = await new Promise((res, rej) => db.all(sqlFiles, [currentFolderId, userId], (err, rows) => err ? rej(err) : res(rows)));
+        filesToDelete.push(...files);
+        const sqlFolders = `SELECT id FROM folders WHERE parent_id = ? AND user_id = ?`;
+        const subFolders = await new Promise((res, rej) => db.all(sqlFolders, [currentFolderId, userId], (err, rows) => err ? rej(err) : res(rows)));
+        for (const subFolder of subFolders) {
+            foldersToDelete.push(subFolder.id);
+            await findContents(subFolder.id);
+        }
+    }
+    await findContents(folderId);
+    const folderPlaceholders = foldersToDelete.map(() => '?').join(',');
+    const deleteFoldersSql = `DELETE FROM folders WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
+    await new Promise((res, rej) => db.run(deleteFoldersSql, [...foldersToDelete, userId], (err) => err ? rej(err) : res()));
+    return filesToDelete;
 }
 
-// --- 檔案與分享操作 ---
 function addFile(fileData, folderId = 1, userId, storageType) {
-    // ... (此函式不變)
+    const { message_id, fileName, mimetype, file_id, thumb_file_id, date } = fileData;
+    const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, folder_id, user_id, storage_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, folderId, userId, storageType], function(err) {
+            if (err) reject(err);
+            else resolve({ success: true, id: this.lastID, fileId: this.lastID });
+        });
+    });
 }
 
 function getFilesByIds(messageIds, userId) {
-    // ... (此函式不變)
+    const placeholders = messageIds.map(() => '?').join(',');
+    const sql = `SELECT * FROM files WHERE message_id IN (${placeholders}) AND user_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.all(sql, [...messageIds, userId], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
 }
 
-// --- *** 修改部分 開始 *** ---
+function getFileByShareToken(token) {
+     return new Promise((resolve, reject) => {
+        const sql = "SELECT * FROM files WHERE share_token = ?";
+        db.get(sql, [token], (err, row) => {
+            if (err) return reject(err);
+            if (!row) return resolve(null);
+            if (row.share_expires_at && Date.now() > row.share_expires_at) {
+                const updateSql = "UPDATE files SET share_token = NULL, share_expires_at = NULL WHERE message_id = ?";
+                db.run(updateSql, [row.message_id]);
+                resolve(null);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+}
+
 function getFolderByShareToken(token) {
      return new Promise((resolve, reject) => {
         const sql = "SELECT * FROM folders WHERE share_token = ?";
@@ -141,6 +241,28 @@ function getFolderByShareToken(token) {
             } else {
                 resolve(row);
             }
+        });
+    });
+}
+
+function renameFile(messageId, newFileName, userId) {
+    const sql = `UPDATE files SET fileName = ? WHERE message_id = ? AND user_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [newFileName, messageId, userId], function(err) {
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '文件未找到。' });
+            else resolve({ success: true });
+        });
+    });
+}
+
+function renameFolder(folderId, newFolderName, userId) {
+    const sql = `UPDATE folders SET name = ? WHERE id = ? AND user_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [newFolderName, folderId, userId], function(err) {
+            if (err) reject(err);
+            else if (this.changes === 0) resolve({ success: false, message: '資料夾未找到。' });
+            else resolve({ success: true });
         });
     });
 }
@@ -172,6 +294,17 @@ function createShareLink(itemId, itemType, expiresIn, userId) {
             if (err) reject(err);
             else if (this.changes === 0) resolve({ success: false, message: '項目未找到。' });
             else resolve({ success: true, token });
+        });
+    });
+}
+
+function deleteFilesByIds(messageIds, userId) {
+    const placeholders = messageIds.map(() => '?').join(',');
+    const sql = `DELETE FROM files WHERE message_id IN (${placeholders}) AND user_id = ?`;
+    return new Promise((resolve, reject) => {
+        db.run(sql, [...messageIds, userId], function(err) {
+            if (err) reject(err);
+            else resolve({ success: true, changes: this.changes });
         });
     });
 }
@@ -208,12 +341,56 @@ function cancelShare(itemId, itemType, userId) {
         });
     });
 }
-// --- *** 修改部分 結束 *** ---
 
-// ... (其他函式如 renameFile, renameFolder 等保持不變) ...
+function checkNameConflict(itemNames, targetFolderId, userId) {
+    return new Promise((resolve, reject) => {
+        if (!itemNames || itemNames.length === 0) {
+            return resolve([]);
+        }
+        const placeholders = itemNames.map(() => '?').join(',');
+        const sql = `SELECT fileName FROM files WHERE fileName IN (${placeholders}) AND folder_id = ? AND user_id = ?`;
+        db.all(sql, [...itemNames, targetFolderId, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows.map(r => r.fileName));
+        });
+    });
+}
+
+function findFileInFolder(fileName, folderId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT message_id FROM files WHERE fileName = ? AND folder_id = ? AND user_id = ?`;
+        db.get(sql, [fileName, folderId, userId], (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
+        });
+    });
+}
 
 module.exports = { 
-    // ... (所有舊的 exports)
+    createUser,
+    findUserByName,
+    findUserById,
+    changeUserPassword,
+    listNormalUsers,
+    deleteUser,
+    searchFiles, 
+    getFolderContents, 
+    getFilesRecursive, 
+    getFolderPath, 
+    createFolder, 
+    getAllFolders, 
+    deleteFolderRecursive, 
+    addFile, 
+    getFilesByIds, 
+    moveItems, 
+    getFileByShareToken, 
     getFolderByShareToken,
-    getActiveShares,
+    createShareLink, 
+    getActiveShares, 
+    cancelShare, 
+    renameFile, 
+    renameFolder,
+    deleteFilesByIds,
+    findFileInFolder,
+    checkNameConflict
 };
