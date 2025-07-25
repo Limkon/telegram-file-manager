@@ -13,6 +13,21 @@ function findFileInFolder(fileName, folderId) {
     });
 }
 
+// --- 新增函式：檢查多個檔名是否在目標資料夾發生衝突 ---
+function checkNameConflict(itemNames, targetFolderId) {
+    return new Promise((resolve, reject) => {
+        if (!itemNames || itemNames.length === 0) {
+            return resolve([]);
+        }
+        const placeholders = itemNames.map(() => '?').join(',');
+        const sql = `SELECT fileName FROM files WHERE fileName IN (${placeholders}) AND folder_id = ?`;
+        db.all(sql, [...itemNames, targetFolderId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows.map(r => r.fileName));
+        });
+    });
+}
+
 // --- 搜尋檔案 ---
 function searchFiles(query) {
     return new Promise((resolve, reject) => {
@@ -269,5 +284,6 @@ module.exports = {
     cancelShare,
     renameFile,
     deleteFilesByIds,
-    findFileInFolder
+    findFileInFolder,
+    checkNameConflict
 };
