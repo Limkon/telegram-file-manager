@@ -117,7 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const link = document.createElement(index === path.length - 1 && !isSearchMode ? 'span' : 'a');
-            link.textContent = p.name;
+            // --- *** 修改部分 *** ---
+            link.textContent = p.name === '/' ? '根目录' : p.name;
             if (link.tagName === 'A') {
                 link.href = '#';
                 link.dataset.folderId = p.id;
@@ -139,7 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = 'item-card';
         card.dataset.id = item.id;
         card.dataset.type = item.type;
-        card.dataset.name = item.name;
+        // --- *** 修改部分 *** ---
+        card.dataset.name = item.name === '/' ? '根目录' : item.name;
         
         let iconHtml = '';
         if (item.type === 'file') {
@@ -155,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
             iconHtml = '<i class="fas fa-folder"></i>';
         }
         
-        card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name}</h5></div>`;
+        // --- *** 修改部分 *** ---
+        card.innerHTML = `<div class="item-icon">${iconHtml}</div><div class="item-info"><h5 title="${item.name}">${item.name === '/' ? '根目录' : item.name}</h5></div>`;
         if (selectedItems.has(String(item.id))) card.classList.add('selected');
         return card;
     };
@@ -203,7 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const buildOptions = (node, prefix = '') => {
                 const option = document.createElement('option');
                 option.value = node.id;
-                option.textContent = prefix + node.name;
+                // --- *** 修改部分 *** ---
+                option.textContent = prefix + (node.name === '/' ? '根目录' : node.name);
                 folderSelect.appendChild(option);
                 node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildOptions(child, prefix + '　'));
             };
@@ -581,6 +585,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selectedItems.size === 0) return;
             try {
                 await loadFoldersForUpload();
+                const folderTreeEl = document.getElementById('folderTree');
+                folderTreeEl.innerHTML = folderSelect.innerHTML;
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
@@ -589,12 +595,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (folderTree) {
         folderTree.addEventListener('click', e => {
-            const target = e.target.closest('.folder-item');
+            const target = e.target.closest('option');
             if (!target) return;
-            const previouslySelected = folderTree.querySelector('.folder-item.selected');
-            if (previouslySelected) previouslySelected.classList.remove('selected');
-            target.classList.add('selected');
-            moveTargetFolderId = parseInt(target.dataset.folderId);
+            const previouslySelected = folderTree.querySelector('option[selected]');
+            if (previouslySelected) previouslySelected.removeAttribute('selected');
+            target.setAttribute('selected', 'selected');
+            moveTargetFolderId = parseInt(target.value);
             confirmMoveBtn.disabled = false;
         });
     }
@@ -691,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isNaN(folderId)) {
             loadFolderContents(folderId);
         } else {
-            window.location.href = '/'; // 如果 URL 無效，重定向到首頁
+            window.location.href = '/'; 
         }
     }
 });
