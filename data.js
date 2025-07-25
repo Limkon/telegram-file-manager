@@ -269,6 +269,17 @@ function checkNameConflict(itemNames, targetFolderId, userId) {
         });
     });
 }
+
+function findFileInFolder(fileName, folderId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT message_id FROM files WHERE fileName = ? AND folder_id = ? AND user_id = ?`;
+        db.get(sql, [fileName, folderId, userId], (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
+        });
+    });
+}
+
 module.exports = { 
     createUser,
     findUserByName,
