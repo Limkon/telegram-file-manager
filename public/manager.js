@@ -203,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('加載資料夾列表失敗', error);
         }
     };
+
     const uploadFiles = async (files, targetFolderId, isDrag = false) => {
         if (files.length === 0) return;
 
@@ -253,16 +254,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (captionInput && captionInput.value && !isDrag) {
             formData.append('caption', captionInput.value);
         }
-
+        
         const progressBar = isDrag ? dragUploadProgressBar : document.getElementById('progressBar');
         const progressArea = isDrag ? dragUploadProgressArea : document.getElementById('progressArea');
-        
+        const submitButton = uploadForm.querySelector('button[type="submit"]');
+
         progressArea.style.display = 'block';
         progressBar.style.width = '0%';
         progressBar.textContent = '0%';
 
-        if (uploadModal.style.display === 'flex' && !isDrag) {
-            uploadForm.querySelector('button[type="submit"]').disabled = true;
+        if (!isDrag) {
+            submitButton.disabled = true;
+            submitButton.textContent = '上傳中...';
+        } else {
+            uploadModal.style.display = 'none';
         }
         
         try {
@@ -282,11 +287,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', !isDrag ? uploadNotificationArea : null);
         } finally {
-            if (uploadModal.style.display === 'flex' && !isDrag) {
-                uploadForm.querySelector('button[type="submit"]').disabled = false;
+            if (!isDrag) {
+                submitButton.disabled = false;
+                submitButton.textContent = '上傳';
             }
             setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
-            if (isDrag) uploadModal.style.display = 'none';
         }
     };
     
@@ -314,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
-
+    
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -332,7 +337,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         dropZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
+            const files = [];
+            const items = e.dataTransfer.items;
+            let hasFolder = false;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry();
+                    if (entry) {
+                        if (entry.isFile) {
+                            items[i].getAsFile && files.push(items[i].getAsFile());
+                        } else if (entry.isDirectory) {
+                            hasFolder = true;
+                        }
+                    }
+                }
+            }
+            if (hasFolder) {
+                showNotification('不支援拖拽資料夾上傳，請選擇檔案。', 'error');
+            }
             if (files.length > 0) {
                 uploadFiles(files, currentFolderId, true);
             }
