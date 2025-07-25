@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'file-manager.db');
@@ -19,47 +20,63 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
         console.error('无法连接到数据库:', err.message);
     } else {
         db.serialize(() => {
-            // 步驟 1: 建立 folders 資料表
+            db.run("PRAGMA foreign_keys = ON;");
+
+            // 建立 users 資料表
+            db.run(`CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                is_admin BOOLEAN NOT NULL DEFAULT 0
+            )`);
+            
+            // 為 folders 增加 user_id
             db.run(`CREATE TABLE IF NOT EXISTS folders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 parent_id INTEGER,
-                FOREIGN KEY (parent_id) REFERENCES folders (id) ON DELETE CASCADE
-            )`, (err) => {
-                if (err) {
-                    console.error("创建 'folders' 表失败:", err.message);
-                } else {
-                    // 確保根目錄 (parent_id is NULL) 存在
-                    db.get("SELECT * FROM folders WHERE parent_id IS NULL", (err, row) => {
-                        if (!row) {
-                            db.run("INSERT INTO folders (name, parent_id) VALUES (?, ?)", ['/', null]);
-                        }
-                    });
-                }
-            });
-
-            // 步驟 2: 修改 files 資料表，加入 folder_id
-            db.run("PRAGMA foreign_keys = ON;");
-            db.all("PRAGMA table_info(files)", (err, columns) => {
-                if (columns && !columns.find(c => c.name === 'folder_id')) {
-                    console.log("正在為 'files' 表新增 'folder_id' 欄位...");
-                    db.run(`ALTER TABLE files ADD COLUMN folder_id INTEGER NOT NULL DEFAULT 1 REFERENCES folders(id) ON DELETE CASCADE`, (err) => {
-                         if (err) console.error("新增 'folder_id' 欄位失敗:", err.message);
-                    });
-                }
-            });
-
-            // 步驟 3: 維持原有的 files 資料表結構
+                user_id INTEGER NOT NULL, 
+                FOREIGN KEY (parent_id) REFERENCES folders (id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )`);
+            
+            // 為 files 增加 user_id 和 storage_type
             db.run(`CREATE TABLE IF NOT EXISTS files (
                 message_id INTEGER PRIMARY KEY,
                 fileName TEXT NOT NULL,
                 mimetype TEXT,
-                file_id TEXT NOT NULL UNIQUE,
+                file_id TEXT NOT NULL,
                 thumb_file_id TEXT,
                 date INTEGER NOT NULL,
                 share_token TEXT,
-                share_expires_at INTEGER
+                share_expires_at INTEGER,
+                folder_id INTEGER NOT NULL DEFAULT 1,
+                user_id INTEGER NOT NULL,
+                storage_type TEXT NOT NULL DEFAULT 'telegram',
+                UNIQUE(fileName, folder_id, user_id),
+                FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )`);
+
+            // 檢查並建立管理員帳號和其根目錄
+            db.get("SELECT * FROM users WHERE is_admin = 1", (err, admin) => {
+                if (!admin) {
+                    const adminUser = process.env.ADMIN_USER || 'admin';
+                    const adminPass = process.env.ADMIN_PASS || 'admin';
+                    const salt = bcrypt.genSaltSync(10);
+                    const hashedPassword = bcrypt.hashSync(adminPass, salt);
+
+                    db.run("INSERT INTO users (username, password, is_admin) VALUES (?, ?, 1)", [adminUser, hashedPassword], function(err) {
+                        if (err) return console.error("建立管理員帳號失敗", err);
+                        const adminId = this.lastID;
+                        db.get("SELECT * FROM folders WHERE user_id = ? AND parent_id IS NULL", [adminId], (err, root) => {
+                            if (!root) {
+                                db.run("INSERT INTO folders (name, parent_id, user_id) VALUES (?, NULL, ?)", ['/', adminId]);
+                            }
+                        });
+                    });
+                }
+            });
         });
     }
 });
