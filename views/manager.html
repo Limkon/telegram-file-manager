@@ -35,13 +35,13 @@
         font-size: 24px;
         font-weight: bold;
         color: #007bff;
-        pointer-events: none; /* 讓滑鼠事件穿透覆蓋層 */
+        pointer-events: none;
     }
     #dropZone.dragover #dropZoneOverlay {
         display: flex;
     }
     .preview-modal-content { 
-        background: #ffffff; /* 將背景改为白色 */
+        background: #ffffff;
         width: auto; 
         max-width: 90vw; 
         max-height: 90vh; 
@@ -50,25 +50,18 @@
         position: absolute; 
         top: 15px; 
         right: 35px; 
-        color: #ffffff; /* 將關閉按鈕改為純白色 */
+        color: #ffffff;
         font-size: 40px; 
         font-weight: bold; 
         cursor: pointer; 
     }
     #uploadModal .close-button {
-        color: #333; /* 讓上傳彈窗的關閉按鈕變成深色 */
+        color: #333;
     }
     .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
     .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
-    .no-preview {
-        color: #f1f1f1; /* 提示文字維持淺色 */
-        text-align: center;
-    }
-    .no-preview i {
-        font-size: 48px;
-        margin-bottom: 10px;
-        display: block;
-    }
+    .no-preview { color: #f1f1f1; text-align: center; }
+    .no-preview i { font-size: 48px; margin-bottom: 10px; display: block; }
     .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
     .share-modal-content h3 { margin-top: 0; }
     .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
@@ -103,7 +96,6 @@
     .notification.local { margin-bottom: 15px; }
     .notification.success { background-color: #28a745; }
     .notification.error { background-color: #dc3545; }
-    /* --- *** 新增部分 *** --- */
     .header-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     #changePasswordBtn { background-color: #ffc107; }
     #logoutBtn { background-color: #dc3545; }
@@ -122,7 +114,7 @@
         <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密碼</span></button>
         <button id="logoutBtn" class="upload-link-btn"><i class="fas fa-sign-out-alt"></i><span class="button-text"> 登出</span></button>
       </div>
-      </header>
+    </header>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
         <nav class="breadcrumb" id="breadcrumb" style="margin-bottom: 0; flex-grow: 1;"></nav>
@@ -219,7 +211,9 @@
         <button id="previewBtn" title="預覽" disabled><i class="fas fa-eye"></i></button>
         <button id="moveBtn" title="移動" disabled><i class="fas fa-people-arrows"></i></button>
         <button id="shareBtn" title="分享" disabled><i class="fas fa-share-alt"></i></button>
-        <button id="renameBtn" title="重命名" disabled><i class="fas fa-edit"></i></button>
+        <!-- --- *** 修改部分 開始 *** --- -->
+        <button id="renameBtn" title="重命名" disabled><i class="fas fa-i-cursor"></i></button>
+        <!-- --- *** 修改部分 結束 *** --- -->
         <button id="downloadBtn" title="下載" disabled><i class="fas fa-download"></i></button>
         <button id="deleteBtn" title="刪除" disabled><i class="fas fa-trash-alt"></i></button>
     </div>
