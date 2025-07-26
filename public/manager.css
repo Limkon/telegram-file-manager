@@ -96,9 +96,13 @@ body {
     font-size: 64px;
     overflow: hidden;
 }
-.item-icon .fa-folder { color: #ffc107; }
 .item-icon i.fas { color: #adb5bd; }
-.item-icon img { width: 100%; height: 100%; object-fit: cover; }
+.item-icon img,
+.item-icon video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+}
 .item-info {
     padding: 12px;
     border-top: 1px solid var(--border-color);
@@ -149,67 +153,62 @@ body {
 .modal-content img, .modal-content video { width: auto; height: auto; max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
 .close-button { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
 
-/* --- *** 新增部分 開始 *** --- */
-#dragUploadProgressArea {
-    display: none; /* 預設隱藏 */
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 700px;
-    z-index: 1001; /* 比 action-bar 高一層 */
-    background-color: #fff;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-}
-/* --- *** 新增部分 結束 *** --- */
 
 /* --- 手機端優化 (當螢幕寬度小於 768px 時生效) --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;
     }
+
     .main-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
+
     .main-header h1 {
         font-size: 24px;
     }
+    
     .main-header .upload-link-btn {
         padding: 8px 10px;
         font-size: 13px;
         gap: 6px;
     }
+    
     .breadcrumb {
         font-size: 14px;
         padding: 8px 10px;
     }
+
     .item-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 15px;
     }
+    
     .item-icon {
         font-size: 48px;
     }
+
     .item-info {
         padding: 8px;
     }
+
     .item-info h5 {
         font-size: 12px;
     }
+
     .action-bar {
         padding: 10px;
         width: 95%;
         bottom: -120px;
     }
      .action-bar.visible { bottom: 10px; }
+
     .action-bar #selectionCount {
         font-size: 12px;
     }
+    
     .action-bar .actions button {
         padding: 8px;
         margin-left: 5px;
@@ -220,3 +219,13 @@ body {
         display: none;
     }
 }
+
+/* --- 圖示顏色 --- */
+.item-icon i.fa-folder { color: #ffc107; } /* 資料夾: 黃色 */
+.item-icon i.fa-file-pdf { color: #e63946; } /* PDF: 紅色 */
+.item-icon i.fa-file-archive { color: #f77f00; } /* 壓縮檔: 橘色 */
+.item-icon i.fa-file-video { color: #8338ec; } /* 影片: 紫色 */
+.item-icon i.fa-file-audio { color: #00b4d8; } /* 音訊: 藍色 */
+.item-icon i.fa-file-image { color: #52b788; } /* 圖片: 綠色 */
+.item-icon i.fa-file-alt { color: #495057; } /* 文字檔: 深灰色 */
+.item-icon i.fa-file { color: #adb5bd; } /* 未知檔案: 淺灰色 */
