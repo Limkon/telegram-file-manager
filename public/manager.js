@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const folderTree = document.getElementById('folderTree');
     const confirmMoveBtn = document.getElementById('confirmMoveBtn');
     const cancelMoveBtn = document.getElementById('cancelMoveBtn');
+    const conflictModal = document.getElementById('conflictModal');
+    const conflictFileName = document.getElementById('conflictFileName');
+    const conflictOptions = document.getElementById('conflictOptions');
     const shareModal = document.getElementById('shareModal');
     const uploadModal = document.getElementById('uploadModal');
     const showUploadModalBtn = document.getElementById('showUploadModalBtn');
@@ -681,17 +684,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const disabledFolderIds = new Set();
+                const selectedFolderIds = new Set();
                 selectedItems.forEach((item, id) => {
                     if (item.type === 'folder') {
                         const folderId = parseInt(id);
-                        disabledFolderIds.add(folderId);
-                        // 遞迴尋找所有子資料夾並禁用
+                        selectedFolderIds.add(folderId);
                         const findDescendants = (parentId) => {
                             const parentNode = folderMap.get(parentId);
                             if (parentNode && parentNode.children) {
                                 parentNode.children.forEach(child => {
-                                    disabledFolderIds.add(child.id);
+                                    selectedFolderIds.add(child.id);
                                     findDescendants(child.id);
                                 });
                             }
@@ -701,8 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const buildTree = (node, prefix = '') => {
-                    // 禁止移動到目前所在的資料夾
-                    const isDisabled = disabledFolderIds.has(node.id) || node.id === currentFolderId;
+                    const isDisabled = selectedFolderIds.has(node.id) || node.id === currentFolderId;
                     
                     const item = document.createElement('div');
                     item.className = 'folder-item';
@@ -725,6 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch { alert('無法獲取資料夾列表。'); }
         });
     }
+
     if (folderTree) {
         folderTree.addEventListener('click', e => {
             const target = e.target.closest('.folder-item');
@@ -737,6 +739,47 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmMoveBtn.disabled = false;
         });
     }
+
+    async function handleConflict(conflicts) {
+        let overwriteList = [];
+        let i = 0;
+
+        function showNextConflict() {
+            return new Promise((resolve) => {
+                if (i >= conflicts.length) {
+                    resolve({ action: 'finish', overwriteList });
+                    return;
+                }
+
+                conflictFileName.textContent = conflicts[i];
+                conflictModal.style.display = 'flex';
+
+                conflictOptions.onclick = (e) => {
+                    const action = e.target.dataset.action;
+                    if (!action) return;
+
+                    conflictModal.style.display = 'none';
+                    if (action === 'overwrite') {
+                        overwriteList.push(conflicts[i]);
+                        i++;
+                        resolve(showNextConflict());
+                    } else if (action === 'overwrite_all') {
+                        overwriteList = conflicts;
+                        resolve({ action: 'finish', overwriteList });
+                    } else if (action === 'skip') {
+                        i++;
+                        resolve(showNextConflict());
+                    } else if (action === 'skip_all') {
+                        resolve({ action: 'finish', overwriteList: [] });
+                    } else if (action === 'abort') {
+                        resolve({ action: 'abort' });
+                    }
+                };
+            });
+        }
+        return showNextConflict();
+    }
+    
     if (confirmMoveBtn) {
         confirmMoveBtn.addEventListener('click', async () => {
             if (!moveTargetFolderId) return;
@@ -750,21 +793,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
     
                 const conflicts = conflictRes.data.conflicts;
-                let overwrite = false;
+                let overwriteList = [];
     
                 if (conflicts && conflicts.length > 0) {
-                    if (!confirm(`目標資料夾已存在以下同名檔案：\n\n- ${conflicts.join('\n- ')}\n\n是否要覆蓋這些檔案？\n(OK = 全部覆蓋, Cancel = 全部略過)`)) {
-                        showNotification('移動操作已取消。', 'info');
+                    const result = await handleConflict(conflicts);
+                    if (result.action === 'abort') {
+                        showNotification('移動操作已放棄。', 'info');
                         moveModal.style.display = 'none';
                         return;
                     }
-                    overwrite = true;
+                    overwriteList = result.overwriteList;
                 }
     
                 await axios.post('/api/move', { 
                     itemIds, 
                     targetFolderId: moveTargetFolderId,
-                    overwrite
+                    overwriteList
                 });
                 moveModal.style.display = 'none';
                 loadFolderContents(currentFolderId);
