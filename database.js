@@ -29,8 +29,6 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
                 is_admin BOOLEAN NOT NULL DEFAULT 0
             )`);
             
-            // --- *** 修改部分 開始 *** ---
-            // 為 folders 資料表新增 share_token 和 share_expires_at 欄位
             db.run(`CREATE TABLE IF NOT EXISTS folders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -39,9 +37,9 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
                 share_token TEXT,
                 share_expires_at INTEGER,
                 FOREIGN KEY (parent_id) REFERENCES folders (id) ON DELETE CASCADE,
-                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+                UNIQUE(name, parent_id, user_id)
             )`);
-            // --- *** 修改部分 結束 *** ---
             
             db.run(`CREATE TABLE IF NOT EXISTS files (
                 message_id INTEGER PRIMARY KEY,
