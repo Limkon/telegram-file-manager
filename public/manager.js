@@ -380,23 +380,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- *** 關鍵修正 開始 *** ---
     async function handleFolderUpload(files, folderName) {
         const parentId = folderSelect.value;
-        let targetFolderId;
-
         try {
-            // 首先，檢查目標位置是否已有同名資料夾
-            const existingFolder = currentFolderContents.folders.find(folder => folder.name === folderName);
-
-            if (existingFolder) {
-                targetFolderId = existingFolder.id;
-                showNotification(`偵測到同名資料夾，檔案將直接上傳至 "${folderName}"。`, 'info');
-            } else {
-                // 如果不存在，則建立新資料夾
-                const res = await axios.post('/api/folder', { name: folderName, parentId });
-                targetFolderId = res.data.id;
-            }
+            const res = await axios.post('/api/folder', { name: folderName, parentId });
+            const targetFolderId = res.data.id;
             
             await uploadFiles(Array.from(files), targetFolderId, false);
 
@@ -413,11 +401,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const folderFiles = folderInput.files;
 
             if (folderFiles.length > 0) {
-                // 處理資料夾上傳
                 const folderName = folderFiles[0].webkitRelativePath.split('/')[0];
                 handleFolderUpload(folderFiles, folderName);
             } else if (files.length > 0) {
-                // 處理檔案上傳
                 const targetFolderId = folderSelect.value;
                 uploadFiles(Array.from(files), targetFolderId, false);
             } else {
@@ -425,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 關鍵修正 結束 *** ---
 
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -676,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert('刪除失敗，請重試。'); }
         });
     }
+    // --- *** 關鍵修正 開始 *** ---
     if (moveBtn) {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
@@ -694,13 +680,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const buildTree = (node, prefix = '') => {
+                const selectedFolderIds = new Set();
+                selectedItems.forEach((item, id) => {
+                    if (item.type === 'folder') {
+                        selectedFolderIds.add(parseInt(id));
+                    }
+                });
+
+                const buildTree = (node, prefix = '', disabled = false) => {
+                    const isSelected = selectedFolderIds.has(node.id);
+                    const isDisabled = disabled || isSelected;
+
                     const item = document.createElement('div');
                     item.className = 'folder-item';
                     item.dataset.folderId = node.id;
                     item.textContent = prefix + (node.name === '/' ? '根目录' : node.name);
+                    
+                    if (isDisabled) {
+                        item.style.color = '#ccc';
+                        item.style.cursor = 'not-allowed';
+                    }
+
                     folderTree.appendChild(item);
-                    node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　'));
+                    node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　', isDisabled));
                 };
                 tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(buildTree);
 
@@ -713,7 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (folderTree) {
         folderTree.addEventListener('click', e => {
             const target = e.target.closest('.folder-item');
-            if (!target) return;
+            if (!target || target.style.cursor === 'not-allowed') return;
+
             const previouslySelected = folderTree.querySelector('.folder-item.selected');
             if (previouslySelected) previouslySelected.classList.remove('selected');
             target.classList.add('selected');
@@ -734,34 +737,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
     
                 const conflicts = conflictRes.data.conflicts;
-                let proceedWithMove = true;
                 let overwrite = false;
     
                 if (conflicts && conflicts.length > 0) {
-                    if (confirm(`目標資料夾已存在以下同名檔案：\n\n- ${conflicts.join('\n- ')}\n\n是否要覆蓋這些檔案？`)) {
-                        overwrite = true;
-                    } else {
-                        proceedWithMove = false;
+                    if (!confirm(`目標資料夾已存在以下同名檔案：\n\n- ${conflicts.join('\n- ')}\n\n是否要覆蓋這些檔案？\n(OK = 全部覆蓋, Cancel = 全部略過)`)) {
+                        // 如果使用者選擇 "Cancel"，則直接返回，不執行移動
+                        showNotification('移動操作已取消。', 'info');
+                        moveModal.style.display = 'none';
+                        return;
                     }
+                    overwrite = true;
                 }
     
-                if (proceedWithMove) {
-                    await axios.post('/api/move', { 
-                        itemIds, 
-                        targetFolderId: moveTargetFolderId,
-                        overwrite
-                    });
-                    moveModal.style.display = 'none';
-                    loadFolderContents(currentFolderId);
-                     showNotification('項目移動成功！', 'success');
-                } else {
-                     showNotification('移動操作已取消。', 'info');
-                }
+                await axios.post('/api/move', { 
+                    itemIds, 
+                    targetFolderId: moveTargetFolderId,
+                    overwrite
+                });
+                moveModal.style.display = 'none';
+                loadFolderContents(currentFolderId);
+                showNotification('項目移動成功！', 'success');
+                
             } catch (error) {
                 alert('操作失敗：' + (error.response?.data?.message || '伺服器錯誤'));
             }
         });
     }
+    // --- *** 關鍵修正 結束 *** ---
+
     if (shareBtn && shareModal) {
         const shareOptions = document.getElementById('shareOptions');
         const shareResult = document.getElementById('shareResult');
