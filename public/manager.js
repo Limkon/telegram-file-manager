@@ -654,13 +654,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
             const pathParts = window.location.pathname.split('/');
-            // 使用 last item 来处理 /folder/1 和 /folder/1/ 的情况
-            const lastPart = pathParts.filter(p => p).pop();
-            let folderId = parseInt(lastPart, 10);
-            if (isNaN(folderId)) {
-                folderId = 1; // 默认为根目录
+            const folderId = parseInt(pathParts[pathParts.length - 1], 10);
+            if (!isNaN(folderId)) {
+                loadFolderContents(folderId);
+            } else {
+                // 如果URL是根目录'/'，则加载根目录内容
+                if(window.location.pathname === '/') {
+                    loadFolderContents(1); 
+                }
             }
-            loadFolderContents(folderId);
         }
     });
     if (createFolderBtn) {
@@ -950,9 +952,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const itemIds = Array.from(selectedItems.keys()).map(id => parseInt(id, 10));
             const fileIds = [];
+            const folderIds = [];
             
             selectedItems.forEach((item, id) => {
                 if(item.type === 'file') fileIds.push(parseInt(id, 10));
+                else folderIds.push(parseInt(id, 10));
             });
 
             try {
@@ -975,7 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 await axios.post('/api/move', {
-                    itemIds,
+                    itemIds, // API route handles both files and folders with a generic `itemIds`
                     targetFolderId: moveTargetFolderId,
                     overwriteList
                 });

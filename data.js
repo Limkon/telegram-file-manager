@@ -1,7 +1,6 @@
 const db = require('./database.js');
 const crypto = require('crypto');
 const path = require('path');
-const storageManager = require('./storage'); // 引入 storageManager
 
 // --- 使用者管理 ---
 function createUser(username, hashedPassword) {
@@ -221,67 +220,23 @@ function getAllFolders(userId) {
     });
 }
 
-function findFilesInFolder(fileNames, folderId, userId) {
+function moveItems(fileIds, folderIds, targetFolderId, userId) {
     return new Promise((resolve, reject) => {
-        if (!fileNames || fileNames.length === 0) return resolve([]);
-        const placeholders = fileNames.map(() => '?').join(',');
-        const sql = `SELECT * FROM files WHERE fileName IN (${placeholders}) AND folder_id = ? AND user_id = ?`;
-        db.all(sql, [...fileNames, folderId, userId], (err, rows) => {
-            if (err) return reject(err);
-            resolve(rows);
+        db.serialize(() => {
+            if (fileIds && fileIds.length > 0) {
+                const filePlaceholders = fileIds.map(() => '?').join(',');
+                const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${filePlaceholders}) AND user_id = ?`;
+                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId]);
+            }
+            if (folderIds && folderIds.length > 0) {
+                const folderPlaceholders = folderIds.map(() => '?').join(',');
+                const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
+                db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId]);
+            }
+            resolve({ success: true });
         });
     });
 }
-
-
-async function moveItems(itemIds, targetFolderId, userId, overwriteList = []) {
-    const items = await getItemsByIds(itemIds, userId);
-    const fileItems = items.filter(i => i.type === 'file');
-    const folderItems = items.filter(i => i.type === 'folder');
-
-    // Handle folder moves and merges
-    for (const folder of folderItems) {
-        const existingFolder = await findFolderByName(folder.name, targetFolderId, userId);
-        if (existingFolder) { // Merge if exists
-            const children = await getChildrenOfFolder(folder.id, userId);
-            const childIds = children.map(c => c.id);
-            if (childIds.length > 0) {
-                await moveItems(childIds, existingFolder.id, userId, overwriteList);
-            }
-            await deleteSingleFolder(folder.id, userId); // Delete original empty folder
-        } else { // Move directly if not exists
-            await new Promise((resolve, reject) => {
-                db.run('UPDATE folders SET parent_id = ? WHERE id = ? AND user_id = ?', [targetFolderId, folder.id, userId], function(err) {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
-        }
-    }
-
-    // Handle file moves and overwrites
-    if (fileItems.length > 0) {
-        const fileIds = fileItems.map(f => f.id);
-        if (overwriteList.length > 0) {
-            const filesToOverwrite = await findFilesInFolder(overwriteList, targetFolderId, userId);
-            if (filesToOverwrite.length > 0) {
-                const storage = storageManager.getStorage();
-                await storage.remove(filesToOverwrite, userId);
-            }
-        }
-        const placeholders = fileIds.map(() => '?').join(',');
-        const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${placeholders}) AND user_id = ?`;
-        await new Promise((resolve, reject) => {
-            db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], function(err) {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
-    }
-
-    return { success: true };
-}
-
 
 function deleteSingleFolder(folderId, userId) {
     return new Promise((resolve, reject) => {
