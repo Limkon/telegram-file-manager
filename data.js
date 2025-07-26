@@ -78,8 +78,6 @@ function searchFiles(query, userId) {
 }
 
 // --- 資料夾與檔案操作 ---
-
-// --- *** 新增部分 開始 *** ---
 function getItemsByIds(itemIds, userId) {
     return new Promise((resolve, reject) => {
         if (!itemIds || itemIds.length === 0) return resolve([]);
@@ -109,7 +107,32 @@ function getChildrenOfFolder(folderId, userId) {
         });
     });
 }
-// --- *** 新增部分 結束 *** ---
+
+async function getAllDescendantFolderIds(folderId, userId) {
+    let descendants = [];
+    let queue = [folderId];
+    const visited = new Set(queue);
+
+    while (queue.length > 0) {
+        const currentId = queue.shift();
+        const sql = `SELECT id FROM folders WHERE parent_id = ? AND user_id = ?`;
+        const children = await new Promise((resolve, reject) => {
+            db.all(sql, [currentId, userId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+
+        for (const child of children) {
+            if (!visited.has(child.id)) {
+                visited.add(child.id);
+                descendants.push(child.id);
+                queue.push(child.id);
+            }
+        }
+    }
+    return descendants;
+}
 
 function getFolderContents(folderId, userId) {
     return new Promise((resolve, reject) => {
@@ -197,15 +220,30 @@ function getAllFolders(userId) {
     });
 }
 
-function moveItems(itemIds, targetFolderId, userId) {
+function moveItems(fileIds, folderIds, targetFolderId, userId) {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
-            const placeholders = itemIds.map(() => '?').join(',');
-            const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${placeholders}) AND user_id = ?`;
-            db.run(moveFilesSql, [targetFolderId, ...itemIds, userId]);
-            const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${placeholders}) AND user_id = ?`;
-            db.run(moveFoldersSql, [targetFolderId, ...itemIds, userId]);
+            if (fileIds && fileIds.length > 0) {
+                const filePlaceholders = fileIds.map(() => '?').join(',');
+                const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${filePlaceholders}) AND user_id = ?`;
+                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId]);
+            }
+            if (folderIds && folderIds.length > 0) {
+                const folderPlaceholders = folderIds.map(() => '?').join(',');
+                const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
+                db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId]);
+            }
             resolve({ success: true });
+        });
+    });
+}
+
+function deleteSingleFolder(folderId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `DELETE FROM folders WHERE id = ? AND user_id = ?`;
+        db.run(sql, [folderId, userId], function(err) {
+            if (err) return reject(err);
+            resolve({ success: true, changes: this.changes });
         });
     });
 }
@@ -437,7 +475,9 @@ module.exports = {
     createFolder,
     findFolderByName,
     getAllFolders, 
+    getAllDescendantFolderIds,
     deleteFolderRecursive, 
+    deleteSingleFolder,
     addFile, 
     getFilesByIds, 
     getItemsByIds,
