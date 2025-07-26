@@ -242,6 +242,7 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
+// --- *** 關鍵修正 開始 *** ---
 app.post('/api/text-file', requireLogin, async (req, res) => {
     const { mode, fileId, folderId, fileName, content } = req.body;
     const userId = req.session.userId;
@@ -268,11 +269,15 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
         } else {
             return res.status(400).json({ success: false, message: '請求參數無效' });
         }
+        
+        // 將新檔案的 ID 回傳給前端
         res.json({ success: true, fileId: result.fileId });
+        
     } catch (error) {
         res.status(500).json({ success: false, message: '伺服器內部錯誤' });
     }
 });
+// --- *** 關鍵修正 結束 *** ---
 
 app.get('/api/file-info/:id', requireLogin, async (req, res) => {
     try {
@@ -345,7 +350,6 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' }); }
 });
 
-// --- *** 關鍵修正 開始 *** ---
 app.post('/api/folder', requireLogin, async (req, res) => {
     const { name, parentId } = req.body;
     const userId = req.session.userId;
@@ -371,7 +375,6 @@ app.post('/api/folder', requireLogin, async (req, res) => {
         }
     }
 });
-// --- *** 關鍵修正 結束 *** ---
 
 app.get('/api/folders', requireLogin, async (req, res) => {
     const folders = await data.getAllFolders(req.session.userId);
