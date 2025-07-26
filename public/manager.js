@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
-    const folderInput = document.getElementById('folderInput'); // 新增
-    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn'); // 新增
+    const folderInput = document.getElementById('folderInput');
+    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
     const fileListContainer = document.getElementById('file-selection-list');
     const folderSelect = document.getElementById('folderSelect');
     const uploadNotificationArea = document.getElementById('uploadNotificationArea');
@@ -44,8 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 狀態
     let isMultiSelectMode = false;
     let currentFolderId = 1;
-    let selectedItems = new Map();
     let currentFolderContents = { folders: [], files: [] };
+    let selectedItems = new Map();
     let moveTargetFolderId = null;
     let isSearchMode = false;
     const MAX_TELEGRAM_SIZE = 50 * 1024 * 1024;
@@ -355,7 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- *** 修改部分 開始 *** ---
     if (fileInput) {
         fileInput.addEventListener('change', () => {
             fileListContainer.innerHTML = '';
@@ -376,46 +375,57 @@ document.addEventListener('DOMContentLoaded', () => {
             if (files.length > 0) {
                 const folderName = files[0].webkitRelativePath.split('/')[0];
                 fileListContainer.innerHTML = `<li>已選擇資料夾: <b>${folderName}</b> (包含 ${files.length} 個檔案)</li>`;
-                uploadSubmitBtn.style.display = 'none'; // 隱藏原上傳按鈕，因為我們將在確認後處理
-                
-                if (confirm(`確定要上傳資料夾 "${folderName}" 嗎？\n系統將在目前位置建立一個同名資料夾來存放所有檔案。`)) {
-                    handleFolderUpload(files, folderName);
-                } else {
-                    // 清空選擇
-                    fileListContainer.innerHTML = '';
-                    e.target.value = ''; 
-                }
+                uploadSubmitBtn.style.display = 'block';
             }
         });
     }
 
+    // --- *** 關鍵修正 開始 *** ---
     async function handleFolderUpload(files, folderName) {
         const parentId = folderSelect.value;
+        let targetFolderId;
+
         try {
-            // 1. 在伺服器建立同名資料夾
-            const res = await axios.post('/api/folder', { name: folderName, parentId });
-            const newFolderId = res.data.id;
+            // 首先，檢查目標位置是否已有同名資料夾
+            const existingFolder = currentFolderContents.folders.find(folder => folder.name === folderName);
+
+            if (existingFolder) {
+                targetFolderId = existingFolder.id;
+                showNotification(`偵測到同名資料夾，檔案將直接上傳至 "${folderName}"。`, 'info');
+            } else {
+                // 如果不存在，則建立新資料夾
+                const res = await axios.post('/api/folder', { name: folderName, parentId });
+                targetFolderId = res.data.id;
+            }
             
-            // 2. 將所有檔案上傳到新建立的資料夾中
-            await uploadFiles(Array.from(files), newFolderId, false);
+            await uploadFiles(Array.from(files), targetFolderId, false);
 
         } catch (error) {
-            showNotification('建立資料夾或上傳失敗：' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
+            showNotification('處理資料夾上傳失敗：' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
         }
     }
 
     if (uploadForm) {
         uploadForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // 這個提交只處理手動選擇檔案的情況
+            
             const files = fileInput.files;
-            if (files.length > 0) {
+            const folderFiles = folderInput.files;
+
+            if (folderFiles.length > 0) {
+                // 處理資料夾上傳
+                const folderName = folderFiles[0].webkitRelativePath.split('/')[0];
+                handleFolderUpload(folderFiles, folderName);
+            } else if (files.length > 0) {
+                // 處理檔案上傳
                 const targetFolderId = folderSelect.value;
                 uploadFiles(Array.from(files), targetFolderId, false);
+            } else {
+                showNotification('請選擇檔案或資料夾。', 'error', uploadNotificationArea);
             }
         });
     }
-    // --- *** 修改部分 結束 *** ---
+    // --- *** 關鍵修正 結束 *** ---
 
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
