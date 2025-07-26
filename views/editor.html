@@ -140,12 +140,9 @@
                     return;
                 }
 
-                // --- *** 修改部分 開始 *** ---
-                // 如果使用者沒有輸入 .txt，則自動添加
                 if (!fileName.endsWith('.txt')) {
                     fileName += '.txt';
                 }
-                // --- *** 修改部分 結束 *** ---
 
                 const content = editor.value;
                 saveBtn.disabled = true;
@@ -170,13 +167,12 @@
                         saveStatus.textContent = '';
                     }, 2000);
 
-                    // 如果是新建檔案，儲存後獲取新的 fileId，頁面轉換為編輯模式
                     if (mode === 'create' && response.data.fileId) {
                         fileId = response.data.fileId;
                         mode = 'edit';
                         const newUrl = `${window.location.pathname}?mode=edit&fileId=${fileId}`;
                         history.pushState({}, '', newUrl);
-                        fileNameInput.value = fileName; // 同步更新輸入框中的檔名
+                        fileNameInput.value = fileName;
                     }
 
                 } catch (error) {
