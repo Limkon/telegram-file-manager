@@ -99,11 +99,16 @@
     .header-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     #changePasswordBtn { background-color: #ffc107; }
     #logoutBtn { background-color: #dc3545; }
-    /* --- *** 新增部分 *** --- */
     .upload-options { display: flex; gap: 10px; margin-bottom: 15px; }
     .upload-options .custom-upload-btn { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; cursor: pointer; text-align: center; }
     .upload-options .custom-upload-btn:hover { background-color: #e2e6ea; }
     .upload-options input[type="file"] { display: none; }
+    /* --- *** 新增部分 *** --- */
+    #conflictModal .move-modal-content { max-width: 500px; }
+    #conflictModal p { margin-bottom: 10px; }
+    #conflictFileName { font-weight: bold; color: #dc3545; }
+    #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+    #conflictOptions button { width: auto; padding: 8px 16px; }
   </style>
 </head>
 <body>
@@ -178,6 +183,24 @@
     </div>
   </div>
 
+  <!-- --- *** 新增部分 開始 *** --- -->
+  <div id="conflictModal" class="modal">
+    <div class="move-modal-content">
+        <h3>檔案衝突</h3>
+        <p>目標資料夾中已存在同名檔案：</p>
+        <p><b id="conflictFileName"></b></p>
+        <p>您要如何處理？</p>
+        <div id="conflictOptions">
+            <button data-action="overwrite">覆蓋</button>
+            <button data-action="overwrite_all">全部覆蓋</button>
+            <button data-action="skip">取消</button>
+            <button data-action="skip_all">全部取消</button>
+            <button data-action="abort" style="background-color: #dc3545;">放棄</button>
+        </div>
+    </div>
+  </div>
+  <!-- --- *** 新增部分 結束 *** --- -->
+
   <div id="uploadModal" class="modal">
     <div class="upload-modal-content">
         <span class="close-button" id="closeUploadModalBtn">&times;</span>
@@ -195,7 +218,7 @@
             <ul id="file-selection-list"></ul>
             <label for="folderSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">上傳到資料夾：</label>
             <select name="folderId" id="folderSelect">
-                </select>
+            </select>
             <input type="text" name="caption" id="uploadCaption" placeholder="可選的說明文字(對所有文件生效)" />
             <button type="submit" id="uploadSubmitBtn">上傳</button>
         </form>
