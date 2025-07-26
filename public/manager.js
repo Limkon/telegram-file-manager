@@ -661,7 +661,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert('刪除失敗，請重試。'); }
         });
     }
-    // --- *** 關鍵修正 開始 *** ---
     if (moveBtn) {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
@@ -704,7 +703,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     folderTree.appendChild(item);
                     node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　', isDisabled));
                 };
-                tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(buildTree);
+                
+                // --- *** 關鍵修正：使用匿名函式包裝 buildTree 呼叫 *** ---
+                tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(node => buildTree(node));
 
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
@@ -741,7 +742,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 if (conflicts && conflicts.length > 0) {
                     if (!confirm(`目標資料夾已存在以下同名檔案：\n\n- ${conflicts.join('\n- ')}\n\n是否要覆蓋這些檔案？\n(OK = 全部覆蓋, Cancel = 全部略過)`)) {
-                        // 如果使用者選擇 "Cancel"，則直接返回，不執行移動
                         showNotification('移動操作已取消。', 'info');
                         moveModal.style.display = 'none';
                         return;
@@ -763,8 +763,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 關鍵修正 結束 *** ---
-
     if (shareBtn && shareModal) {
         const shareOptions = document.getElementById('shareOptions');
         const shareResult = document.getElementById('shareResult');
