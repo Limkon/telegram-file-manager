@@ -65,3 +65,17 @@ ADMIN_PASS=your_admin_password
 
 **必填：用于加密 Session 的随机密钥，请换成一个复杂的随机字串
 SESSION_SECRET=a8e2a32e9b1c7d5f6a7b3c4d5e8f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f
+
+#### 3.刪除舊的管理員帳號
+
+** 您需要一個 SQLite 資料庫編輯工具來操作 data/file-manager.db 這個檔案。
+
+** 如果您熟悉命令列，可以在專案根目錄下執行 sqlite3 data/file-manager.db 來進入資料庫。
+
+** 如果您希望使用圖形化介面，推薦下載並安裝 DB Browser for SQLite，然後用它打開 data/file-manager.db 檔案。
+
+** 無論使用哪種工具，請執行以下 SQL 指令來刪除所有被標記為管理員的用戶：
+
+** SQL
+
+** DELETE FROM users WHERE is_admin = 1;
