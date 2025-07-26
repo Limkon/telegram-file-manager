@@ -342,7 +342,7 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
         const contents = await data.getFolderContents(folderId, req.session.userId);
         const path = await data.getFolderPath(folderId, req.session.userId);
         res.json({ contents, path });
-    } catch (error) { res.status(500).json({ success: false, message: '读取资料夹内容失败。' }); }
+    } catch (error) { res.status(500).json({ success: false, message: '读取资料夾内容失败。' }); }
 });
 
 app.post('/api/folder', requireLogin, async (req, res) => {
@@ -360,7 +360,7 @@ app.post('/api/folder', requireLogin, async (req, res) => {
             res.json(result);
         }
     } catch (error) {
-         res.status(500).json({ success: false, message: error.message || '处理资料夹时发生错误。' });
+         res.status(500).json({ success: false, message: error.message || '处理资料夾时发生错误。' });
     }
 });
 
@@ -423,11 +423,11 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
     const userId = req.session.userId;
     const storage = storageManager.getStorage();
-    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夹 ID。' });
+    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夾 ID。' });
     
     const folderInfo = await data.getFolderPath(folderId, userId);
     if (!folderInfo || folderInfo.length === 0) {
-        return res.status(404).json({ success: false, message: '找不到指定的资料夹。' });
+        return res.status(404).json({ success: false, message: '找不到指定的资料夾。' });
     }
     if (folderInfo.length === 1 && folderInfo[0].id === folderId) {
         return res.status(400).json({ success: false, message: '无法删除根目录。' });
