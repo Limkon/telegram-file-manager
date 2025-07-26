@@ -199,7 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (renameBtn) renameBtn.disabled = count !== 1;
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
-        actionBar.classList.toggle('visible', count > 0 || textEditBtn);
+        
+        actionBar.style.bottom = '20px';
+
         if (!isMultiSelectMode && multiSelectBtn) {
             multiSelectBtn.classList.remove('active');
         }
