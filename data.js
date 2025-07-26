@@ -61,6 +61,7 @@ function deleteUser(userId) {
     });
 }
 
+
 // --- 檔案搜尋 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
@@ -76,7 +77,40 @@ function searchFiles(query, userId) {
     });
 }
 
-// --- 資料夾操作 ---
+// --- 資料夾與檔案操作 ---
+
+// --- *** 新增部分 開始 *** ---
+function getItemsByIds(itemIds, userId) {
+    return new Promise((resolve, reject) => {
+        if (!itemIds || itemIds.length === 0) return resolve([]);
+        const placeholders = itemIds.map(() => '?').join(',');
+        const sql = `
+            SELECT id, name, 'folder' as type FROM folders WHERE id IN (${placeholders}) AND user_id = ?
+            UNION ALL
+            SELECT message_id as id, fileName as name, 'file' as type FROM files WHERE message_id IN (${placeholders}) AND user_id = ?
+        `;
+        db.all(sql, [...itemIds, userId, ...itemIds, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+
+function getChildrenOfFolder(folderId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT id, name, 'folder' as type FROM folders WHERE parent_id = ? AND user_id = ?
+            UNION ALL
+            SELECT message_id as id, fileName as name, 'file' as type FROM files WHERE folder_id = ? AND user_id = ?
+        `;
+        db.all(sql, [folderId, userId, folderId, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
+        });
+    });
+}
+// --- *** 新增部分 結束 *** ---
+
 function getFolderContents(folderId, userId) {
     return new Promise((resolve, reject) => {
         const sqlFolders = `SELECT id, name, parent_id, 'folder' as type FROM folders WHERE parent_id = ? AND user_id = ? ORDER BY name ASC`;
@@ -139,6 +173,16 @@ function createFolder(name, parentId, userId) {
                 return reject(err);
             }
             resolve({ success: true, id: this.lastID });
+        });
+    });
+}
+
+function findFolderByName(name, parentId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `SELECT id FROM folders WHERE name = ? AND parent_id = ? AND user_id = ?`;
+        db.get(sql, [name, parentId, userId], (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
         });
     });
 }
@@ -244,7 +288,6 @@ function getFolderByShareToken(token) {
     });
 }
 
-// --- *** 新增部分 開始 *** ---
 function findFileInSharedFolder(fileId, folderToken) {
     return new Promise((resolve, reject) => {
         const sql = `
@@ -259,7 +302,6 @@ function findFileInSharedFolder(fileId, folderToken) {
         });
     });
 }
-// --- *** 新增部分 結束 *** ---
 
 function renameFile(messageId, newFileName, userId) {
     const sql = `UPDATE files SET fileName = ? WHERE message_id = ? AND user_id = ?`;
@@ -392,11 +434,14 @@ module.exports = {
     getFolderContents, 
     getFilesRecursive, 
     getFolderPath, 
-    createFolder, 
+    createFolder,
+    findFolderByName,
     getAllFolders, 
     deleteFolderRecursive, 
     addFile, 
     getFilesByIds, 
+    getItemsByIds,
+    getChildrenOfFolder,
     moveItems, 
     getFileByShareToken, 
     getFolderByShareToken,
