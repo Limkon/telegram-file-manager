@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 辅助函式 ---
     const formatBytes = (bytes, decimals = 2) => {
-        if (!bytes) return '0 Bytes';
+        if (!bytes || bytes === 0) return '0 Bytes';
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -90,12 +90,19 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             isSearchMode = false;
             if (searchInput) searchInput.value = '';
-            itemGrid.innerHTML = '<p>正在加载...</p>';
-            itemListBody.innerHTML = '<p>正在加载...</p>';
+            // 不再显示“正在加载”，以避免闪烁
+            // itemGrid.innerHTML = '<p>正在加载...</p>';
+            // itemListBody.innerHTML = '<p>正在加载...</p>';
             currentFolderId = folderId;
             const res = await axios.get(`/api/folder/${folderId}`);
             currentFolderContents = res.data.contents;
-            selectedItems.clear();
+            // 清理已不存在的选择项
+            const currentIds = new Set([...res.data.contents.folders.map(f => String(f.id)), ...res.data.contents.files.map(f => String(f.id))]);
+            selectedItems.forEach((_, key) => {
+                if (!currentIds.has(key)) {
+                    selectedItems.delete(key);
+                }
+            });
             renderBreadcrumb(res.data.path);
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
@@ -110,8 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
-            itemGrid.innerHTML = '<p>正在搜寻...</p>';
-            itemListBody.innerHTML = '<p>正在搜寻...</p>';
+            // 不再显示“正在加载”，以避免闪烁
+            // itemGrid.innerHTML = '<p>正在搜寻...</p>';
+            // itemListBody.innerHTML = '<p>正在搜寻...</p>';
             const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
             currentFolderContents = res.data.contents;
             selectedItems.clear();
@@ -141,25 +149,81 @@ document.addEventListener('DOMContentLoaded', () => {
             breadcrumb.appendChild(link);
         });
     };
+    
+    // --- *** 关键修正 开始 (防闪烁渲染) *** ---
     const renderItems = (folders, files) => {
-        if (currentView === 'grid') {
-            itemGrid.innerHTML = '';
-            if (folders.length === 0 && files.length === 0) {
-                itemGrid.innerHTML = isSearchMode ? '<p>找不到符合条件的档案。</p>' : '<p>这个资料夹是空的。</p>';
-                return;
+        const parentGrid = itemGrid;
+        const parentList = itemListBody;
+
+        const allNewItems = [...folders, ...files];
+        const newIdSet = new Set(allNewItems.map(item => String(item.id)));
+        
+        let existingGridElements = new Map();
+        parentGrid.querySelectorAll('.item-card').forEach(el => existingGridElements.set(el.dataset.id, el));
+
+        let existingListElements = new Map();
+        parentList.querySelectorAll('.list-item').forEach(el => existingListElements.set(el.dataset.id, el));
+
+        // 更新或添加项目
+        allNewItems.forEach(item => {
+            const itemIdStr = String(item.id);
+
+            // 更新或添加网格视图项目
+            if (existingGridElements.has(itemIdStr)) {
+                const el = existingGridElements.get(itemIdStr);
+                const oldName = el.querySelector('h5').textContent;
+                if (oldName !== (item.name === '/' ? '根目录' : item.name)) {
+                    el.querySelector('h5').textContent = item.name;
+                    el.querySelector('h5').title = item.name;
+                }
+                el.classList.toggle('selected', selectedItems.has(itemIdStr));
+            } else {
+                parentGrid.appendChild(createItemCard(item));
             }
-            folders.forEach(f => itemGrid.appendChild(createItemCard(f)));
-            files.forEach(f => itemGrid.appendChild(createItemCard(f)));
-        } else { // list view
-            itemListBody.innerHTML = '';
-            if (folders.length === 0 && files.length === 0) {
-                itemListBody.innerHTML = isSearchMode ? '<div class="list-item"><p>找不到符合条件的档案。</p></div>' : '<div class="list-item"><p>这个资料夹是空的。</p></div>';
-                return;
+
+            // 更新或添加列表视图项目
+            if (existingListElements.has(itemIdStr)) {
+                const el = existingListElements.get(itemIdStr);
+                const oldName = el.querySelector('.list-name').textContent;
+                if (oldName !== (item.name === '/' ? '根目录' : item.name)) {
+                    el.querySelector('.list-name').textContent = item.name;
+                    el.querySelector('.list-name').title = item.name;
+                }
+                if (item.type === 'file') {
+                    el.querySelector('.list-size').textContent = formatBytes(item.size);
+                    el.querySelector('.list-date').textContent = new Date(item.date).toLocaleDateString();
+                }
+                 el.classList.toggle('selected', selectedItems.has(itemIdStr));
+            } else {
+                parentList.appendChild(createListItem(item));
             }
-            folders.forEach(f => itemListBody.appendChild(createListItem(f)));
-            files.forEach(f => itemListBody.appendChild(createListItem(f)));
+        });
+
+        // 移除不存在的项目
+        existingGridElements.forEach((el, id) => {
+            if (!newIdSet.has(id)) {
+                el.remove();
+            }
+        });
+        existingListElements.forEach((el, id) => {
+            if (!newIdSet.has(id)) {
+                el.remove();
+            }
+        });
+
+        // 处理空文件夹提示
+        if (allNewItems.length === 0) {
+            if(currentView === 'grid') parentGrid.innerHTML = isSearchMode ? '<p>找不到符合条件的档案。</p>' : '<p>这个资料夹是空的。</p>';
+            else parentList.innerHTML = isSearchMode ? '<div class="list-item"><p>找不到符合条件的档案。</p></div>' : '<div class="list-item"><p>这个资料夹是空的。</p></div>';
+        } else {
+            const emptyGridMsg = parentGrid.querySelector('p');
+            if(emptyGridMsg) emptyGridMsg.remove();
+            const emptyListMsg = parentList.querySelector('.list-item p');
+            if(emptyListMsg) emptyListMsg.parentElement.remove();
         }
     };
+    // --- *** 关键修正 结束 *** ---
+
     const createItemCard = (item) => {
         const card = document.createElement('div');
         card.className = 'item-card';
@@ -169,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let iconHtml = '';
         if (item.type === 'file') {
-            const fullFile = currentFolderContents.files.find(f => f.id === item.id);
+            const fullFile = currentFolderContents.files.find(f => f.id === item.id) || item;
             if (fullFile.storage_type === 'telegram' && fullFile.thumb_file_id) {
                 iconHtml = `<img src="/thumbnail/${item.id}" alt="缩图" loading="lazy">`;
             } else if (fullFile.mimetype && fullFile.mimetype.startsWith('image/')) {
@@ -237,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
             textEditBtn.title = count === 0 ? '新建文字档' : '编辑文字档';
         }
 
-        if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
+        if (previewBtn) previewBtn.disabled = count !== 1 || (count === 1 && selectedItems.values().next().value.type === 'folder');
 
         if (shareBtn) shareBtn.disabled = count !== 1;
 
@@ -252,17 +316,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     const rerenderSelection = () => {
-        if (currentView === 'grid') {
-            document.querySelectorAll('.item-card').forEach(card => {
-                card.classList.toggle('selected', selectedItems.has(card.dataset.id));
-            });
-        } else {
-            document.querySelectorAll('.list-item').forEach(item => {
-                item.classList.toggle('selected', selectedItems.has(item.dataset.id));
-            });
-        }
+        document.querySelectorAll('.item-card, .list-item').forEach(el => {
+            el.classList.toggle('selected', selectedItems.has(el.dataset.id));
+        });
     };
     const loadFoldersForSelect = async () => {
+        // --- *** 关键修正: 增加强制刷新选项 *** ---
         if (foldersLoaded) return;
         try {
             const res = await axios.get('/api/folders');
@@ -456,6 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await axios.post('/api/folder', { name: folderName, parentId });
             const targetFolderId = res.data.id;
+            
+            // --- *** 关键修正: 更新目录列表 *** ---
+            foldersLoaded = false; 
 
             await uploadFiles(Array.from(files), targetFolderId, false);
 
@@ -530,59 +592,48 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/';
         });
     }
-    if (itemGrid) {
-        itemGrid.addEventListener('click', e => {
-            const card = e.target.closest('.item-card');
-            if (!card) return;
-            const id = card.dataset.id;
-            const type = card.dataset.type;
-            const name = card.dataset.name;
-            if (isMultiSelectMode) {
-                if (selectedItems.has(id)) selectedItems.delete(id);
-                else selectedItems.set(id, { type, name });
+    const handleItemClick = (e) => {
+        const target = e.target.closest('.item-card, .list-item');
+        if (!target) return;
+        const id = target.dataset.id;
+        const type = target.dataset.type;
+        const name = target.dataset.name;
+
+        if (isMultiSelectMode) {
+            if (selectedItems.has(id)) {
+                selectedItems.delete(id);
             } else {
-                const isSelected = selectedItems.has(id);
-                selectedItems.clear();
-                if (!isSelected) selectedItems.set(id, { type, name });
+                selectedItems.set(id, { type, name });
             }
-            rerenderSelection();
-            updateActionBar();
-        });
-        itemGrid.addEventListener('dblclick', e => {
-            const card = e.target.closest('.item-card');
-            if (card && card.dataset.type === 'folder') {
-                window.history.pushState(null, '', `/folder/${card.dataset.id}`);
-                loadFolderContents(parseInt(card.dataset.id, 10));
+        } else {
+            const isSelected = selectedItems.has(id);
+            selectedItems.clear();
+            if (!isSelected) {
+                selectedItems.set(id, { type, name });
             }
-        });
+        }
+        rerenderSelection();
+        updateActionBar();
+    };
+
+    const handleItemDblClick = (e) => {
+        const target = e.target.closest('.item-card, .list-item');
+        if (target && target.dataset.type === 'folder') {
+            const folderId = parseInt(target.dataset.id, 10);
+            window.history.pushState(null, '', `/folder/${folderId}`);
+            loadFolderContents(folderId);
+        }
+    };
+    
+    if (itemGrid) {
+        itemGrid.addEventListener('click', handleItemClick);
+        itemGrid.addEventListener('dblclick', handleItemDblClick);
     }
     if (itemListBody) {
-        itemListBody.addEventListener('click', e => {
-            const itemDiv = e.target.closest('.list-item');
-            if (!itemDiv) return;
-            const id = itemDiv.dataset.id;
-            const type = itemDiv.dataset.type;
-            const name = itemDiv.dataset.name;
-            if (isMultiSelectMode) {
-                if (selectedItems.has(id)) selectedItems.delete(id);
-                else selectedItems.set(id, { type, name });
-            } else {
-                const isSelected = selectedItems.has(id);
-                selectedItems.clear();
-                if (!isSelected) selectedItems.set(id, { type, name });
-            }
-            rerenderSelection();
-            updateActionBar();
-        });
-        itemListBody.addEventListener('dblclick', e => {
-            const itemDiv = e.target.closest('.list-item');
-            if (itemDiv && itemDiv.dataset.type === 'folder') {
-                window.history.pushState(null, '', `/folder/${itemDiv.dataset.id}`);
-                loadFolderContents(parseInt(itemDiv.dataset.id, 10));
-            }
-        });
+        itemListBody.addEventListener('click', handleItemClick);
+        itemListBody.addEventListener('dblclick', handleItemDblClick);
     }
-
+    
     if (viewSwitchBtn) {
         viewSwitchBtn.addEventListener('click', () => {
             switchView(currentView === 'grid' ? 'list' : 'grid');
@@ -594,8 +645,9 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const link = e.target.closest('a');
             if (link && link.dataset.folderId) {
-                window.history.pushState(null, '', `/folder/${link.dataset.folderId}`);
-                loadFolderContents(parseInt(link.dataset.folderId, 10));
+                const folderId = parseInt(link.dataset.folderId, 10);
+                window.history.pushState(null, '', `/folder/${folderId}`);
+                loadFolderContents(folderId);
             }
         });
     }
@@ -605,6 +657,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const folderId = parseInt(pathParts[pathParts.length - 1], 10);
             if (!isNaN(folderId)) {
                 loadFolderContents(folderId);
+            } else {
+                // 如果URL是根目录'/'，则加载根目录内容
+                if(window.location.pathname === '/') {
+                    loadFolderContents(1); 
+                }
             }
         }
     });
@@ -614,6 +671,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (name && name.trim()) {
                 try {
                     await axios.post('/api/folder', { name: name.trim(), parentId: currentFolderId });
+                    
+                    // --- *** 关键修正: 更新目录列表 *** ---
+                    foldersLoaded = false; 
+
                     loadFolderContents(currentFolderId);
                 } catch (error) { alert(error.response?.data?.message || '建立失败'); }
             }
@@ -624,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const query = searchInput.value.trim();
             if (query) executeSearch(query);
-            else loadFolderContents(currentFolderId);
+            else if(isSearchMode) loadFolderContents(currentFolderId);
         });
     }
     if (multiSelectBtn) {
@@ -676,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
             const messageId = selectedItems.keys().next().value;
-            const file = currentFolderContents.files.find(f => f.id == messageId);
+            const file = currentFolderContents.files.find(f => String(f.id) === messageId);
             if (!file) return;
 
             previewModal.style.display = 'flex';
@@ -696,7 +757,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     modalContent.innerHTML = '无法载入文字内容。';
                 }
             } else {
-                modalContent.innerHTML = '此档案类型不支持预览。';
+                modalContent.innerHTML = `
+                    <div class="no-preview">
+                        <i class="fas fa-file"></i>
+                        <p>此档案类型不支持预览。</p>
+                        <a href="${downloadUrl}" class="upload-link-btn" download>下载档案</a>
+                    </div>
+                `;
             }
         });
     }
@@ -712,9 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         newName: newName.trim(),
                         type: item.type
                     });
-                    isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
+                    loadFolderContents(currentFolderId);
                  } catch (error) {
-                     alert('重命名失败');
+                     alert('重命名失败: ' + (error.response?.data?.message || '伺服器错误'));
                  }
              }
         });
@@ -761,7 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 if (filesToDelete.length > 0) await axios.post('/delete-multiple', { messageIds: filesToDelete });
                 for (const folderId of foldersToDelete) await axios.post('/api/folder/delete', { folderId });
-                isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
+                loadFolderContents(currentFolderId);
             } catch (error) { alert('删除失败，请重试。'); }
         });
     }
@@ -883,11 +950,18 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmMoveBtn.addEventListener('click', async () => {
             if (!moveTargetFolderId) return;
 
-            const itemIds = Array.from(selectedItems.keys()).map(Number);
+            const itemIds = Array.from(selectedItems.keys()).map(id => parseInt(id, 10));
+            const fileIds = [];
+            const folderIds = [];
+            
+            selectedItems.forEach((item, id) => {
+                if(item.type === 'file') fileIds.push(parseInt(id, 10));
+                else folderIds.push(parseInt(id, 10));
+            });
 
             try {
                 const conflictRes = await axios.post('/api/check-move-conflict', {
-                    itemIds: itemIds.filter(id => selectedItems.get(String(id)).type === 'file'),
+                    itemIds: fileIds,
                     targetFolderId: moveTargetFolderId
                 });
 
@@ -905,7 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 await axios.post('/api/move', {
-                    itemIds,
+                    itemIds, // API route handles both files and folders with a generic `itemIds`
                     targetFolderId: moveTargetFolderId,
                     overwriteList
                 });
@@ -987,14 +1061,16 @@ document.addEventListener('DOMContentLoaded', () => {
             loadFolderContents(currentFolderId);
         }
     });
-
+    
+    // 初始化页面
     if (document.getElementById('itemGrid')) {
         const pathParts = window.location.pathname.split('/');
-        const folderId = parseInt(pathParts[pathParts.length - 1], 10);
-        if (!isNaN(folderId)) {
-            loadFolderContents(folderId);
-        } else {
-            window.location.href = '/';
+        // 使用 last item 来处理 /folder/1 和 /folder/1/ 的情况
+        const lastPart = pathParts.filter(p => p).pop();
+        let folderId = parseInt(lastPart, 10);
+        if (isNaN(folderId)) {
+            folderId = 1; // 默认为根目录
         }
+        loadFolderContents(folderId);
     }
 });
