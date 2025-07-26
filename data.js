@@ -2,7 +2,7 @@ const db = require('./database.js');
 const crypto = require('crypto');
 const path = require('path');
 
-// --- 用户管理 ---
+// --- 使用者管理 ---
 function createUser(username, hashedPassword) {
     return new Promise((resolve, reject) => {
         const sql = `INSERT INTO users (username, password, is_admin) VALUES (?, ?, 0)`;
@@ -62,7 +62,7 @@ function deleteUser(userId) {
 }
 
 
-// --- 文件搜索 ---
+// --- 檔案搜尋 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
@@ -77,7 +77,7 @@ function searchFiles(query, userId) {
     });
 }
 
-// --- 文件夹與文件操作 ---
+// --- 資料夾與檔案操作 ---
 function getItemsByIds(itemIds, userId) {
     return new Promise((resolve, reject) => {
         if (!itemIds || itemIds.length === 0) return resolve([]);
@@ -192,7 +192,7 @@ function createFolder(name, parentId, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [name, parentId, userId], function (err) {
             if (err) {
-                if (err.message.includes('UNIQUE')) return reject(new Error('同目录下已存在同名文件夹。'));
+                if (err.message.includes('UNIQUE')) return reject(new Error('同目錄下已存在同名資料夾。'));
                 return reject(err);
             }
             resolve({ success: true, id: this.lastID });
@@ -357,7 +357,7 @@ function renameFolder(folderId, newFolderName, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [newFolderName, folderId, userId], function(err) {
             if (err) reject(err);
-            else if (this.changes === 0) resolve({ success: false, message: '文件夹未找到。' });
+            else if (this.changes === 0) resolve({ success: false, message: '資料夾未找到。' });
             else resolve({ success: true });
         });
     });

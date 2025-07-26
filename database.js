@@ -11,7 +11,7 @@ try {
         fs.mkdirSync(DATA_DIR);
     }
 } catch (error) {
-    console.error(`[致命错误] 無法創建文件夹: ${DATA_DIR}。错误: ${error.message}`);
+    console.error(`[致命錯誤] 無法創建資料夾: ${DATA_DIR}。錯誤: ${error.message}`);
     process.exit(1); 
 }
 
@@ -66,7 +66,7 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
                     const hashedPassword = bcrypt.hashSync(adminPass, salt);
 
                     db.run("INSERT INTO users (username, password, is_admin) VALUES (?, ?, 1)", [adminUser, hashedPassword], function(err) {
-                        if (err) return console.error("建立管理员账号失败", err);
+                        if (err) return console.error("建立管理員帳號失敗", err);
                         const adminId = this.lastID;
                         db.get("SELECT * FROM folders WHERE user_id = ? AND parent_id IS NULL", [adminId], (err, root) => {
                             if (!root) {

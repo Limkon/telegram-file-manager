@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            loadingMessage.textContent = '加載失败，請稍後重試。';
+            loadingMessage.textContent = '加載失敗，請稍後重試。';
         }
     };
 
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (cancelBtn) {
-            if (!confirm('确定要取消這個項目的分享嗎？')) return;
+            if (!confirm('確定要取消這個項目的分享嗎？')) return;
             
             const row = cancelBtn.closest('tr');
             const itemId = row.dataset.itemId;
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await axios.post('/api/cancel-share', { itemId, itemType });
                 row.remove();
             } catch (error) {
-                alert('取消分享失败，請重試。');
+                alert('取消分享失敗，請重試。');
             }
         }
     });

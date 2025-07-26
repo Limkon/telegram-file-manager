@@ -9,7 +9,7 @@ async function setup() {
     try {
         await fs.mkdir(UPLOAD_DIR, { recursive: true });
     } catch (e) {
-        console.error("無法建立上传目录:", e);
+        console.error("無法建立上傳目錄:", e);
     }
 }
 setup();
@@ -37,7 +37,7 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
     }, folderId, userId, 'local');
     
     // 在回傳物件中加入 fileId
-    return { success: true, message: '文件已保存至本地。', fileId: dbResult.fileId };
+    return { success: true, message: '檔案已儲存至本地。', fileId: dbResult.fileId };
     // --- *** 關鍵修正 結束 *** ---
 }
 
@@ -49,7 +49,7 @@ async function remove(files, userId) {
         try {
             await fs.unlink(filePath);
         } catch (e) {
-            console.warn(`删除本地文件失败: ${filePath}`, e.message);
+            console.warn(`刪除本地檔案失敗: ${filePath}`, e.message);
         }
     }
     await data.deleteFilesByIds(messageIds, userId);

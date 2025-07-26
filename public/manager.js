@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dragUploadProgressArea = document.getElementById('dragUploadProgressArea');
     const dragUploadProgressBar = document.getElementById('dragUploadProgressBar');
 
-    // 状态
+    // 狀態
     let isMultiSelectMode = false;
     let currentFolderId = 1;
     let currentFolderContents = { folders: [], files: [] };
@@ -98,13 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error.response && error.response.status === 401) {
                 window.location.href = '/login';
             }
-            itemGrid.innerHTML = '<p>加載内容失败。</p>';
+            itemGrid.innerHTML = '<p>加載內容失敗。</p>';
         }
     };
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
-            itemGrid.innerHTML = '<p>正在搜索...</p>';
+            itemGrid.innerHTML = '<p>正在搜尋...</p>';
             const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
             currentFolderContents = res.data.contents;
             selectedItems.clear();
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderItems(currentFolderContents.folders, currentFolderContents.files);
             updateActionBar();
         } catch (error) {
-            itemGrid.innerHTML = '<p>搜索失败。</p>';
+            itemGrid.innerHTML = '<p>搜尋失敗。</p>';
         }
     };
     const renderBreadcrumb = (path) => {
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderItems = (folders, files) => {
         itemGrid.innerHTML = '';
         if (folders.length === 0 && files.length === 0) {
-            itemGrid.innerHTML = isSearchMode ? '<p>找不到符合條件的文件。</p>' : '<p>這個文件夹是空的。</p>';
+            itemGrid.innerHTML = isSearchMode ? '<p>找不到符合條件的檔案。</p>' : '<p>這個資料夾是空的。</p>';
             return;
         }
         folders.forEach(f => itemGrid.appendChild(createItemCard(f)));
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (textEditBtn) {
             textEditBtn.disabled = !(count === 0 || isSingleTextFile);
             textEditBtn.innerHTML = count === 0 ? '<i class="fas fa-file-alt"></i>' : '<i class="fas fa-edit"></i>';
-            textEditBtn.title = count === 0 ? '新建文字檔' : '编辑文字檔';
+            textEditBtn.title = count === 0 ? '新建文字檔' : '編輯文字檔';
         }
 
         if (previewBtn) previewBtn.disabled = count !== 1 || selectedItems.values().next().value.type === 'folder';
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             foldersLoaded = true;
         } catch (error) {
-            console.error('加載文件夹列表失败', error);
+            console.error('加載資料夾列表失敗', error);
         }
     };
     const uploadFiles = async (files, targetFolderId, isDrag = false) => {
@@ -244,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const oversizedFiles = Array.from(files).filter(file => file.size > MAX_TELEGRAM_SIZE);
         if (oversizedFiles.length > 0) {
             const fileNames = oversizedFiles.map(f => `"${f.name}"`).join(', ');
-            showNotification(`文件 ${fileNames} 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', !isDrag ? uploadNotificationArea : null);
+            showNotification(`檔案 ${fileNames} 過大，超過 ${formatBytes(MAX_TELEGRAM_SIZE)} 的限制。`, 'error', !isDrag ? uploadNotificationArea : null);
             return;
         }
 
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await axios.post('/api/check-existence', { fileNames: Array.from(files).map(f => f.name), folderId: targetFolderId });
             existenceData = res.data.files;
         } catch (error) {
-            showNotification('檢查文件是否存在時出錯。', 'error');
+            showNotification('檢查檔案是否存在時出錯。', 'error');
             return;
         }
         
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const file of Array.from(files)) {
             const existing = existenceData.find(f => f.name === file.name && f.exists);
             if (existing) {
-                if (confirm(`文件 "${file.name}" 已存在。您要覆蓋它嗎？`)) {
+                if (confirm(`檔案 "${file.name}" 已存在。您要覆蓋它嗎？`)) {
                     filesToOverwrite.push({ name: file.name, messageId: existing.messageId });
                     filesToUpload.push(file);
                 }
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (filesToUpload.length === 0) {
-            showNotification('已取消，沒有文件被上传。', 'info');
+            showNotification('已取消，沒有檔案被上傳。', 'info');
             return;
         }
 
@@ -310,13 +310,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!isDrag) {
                     uploadModal.style.display = 'none';
                 }
-                showNotification('上传成功！', 'success');
+                showNotification('上傳成功！', 'success');
                 loadFolderContents(currentFolderId);
             } else {
-                showNotification('上传失败', 'error', !isDrag ? uploadNotificationArea : null);
+                showNotification('上傳失敗', 'error', !isDrag ? uploadNotificationArea : null);
             }
         } catch (error) {
-            showNotification('上传失败: ' + (error.response?.data?.message || '伺服器错误'), 'error', !isDrag ? uploadNotificationArea : null);
+            showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', !isDrag ? uploadNotificationArea : null);
         } finally {
             if(uploadSubmitBtn) uploadSubmitBtn.disabled = false;
             setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
@@ -332,30 +332,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (changePasswordBtn) {
         changePasswordBtn.addEventListener('click', async () => {
-            const oldPassword = prompt('请输入您的舊密码：');
+            const oldPassword = prompt('請輸入您的舊密碼：');
             if (!oldPassword) return;
 
-            const newPassword = prompt('请输入您的新密码 (至少 4 個字元)：');
+            const newPassword = prompt('請輸入您的新密碼 (至少 4 個字元)：');
             if (!newPassword) return;
 
             if (newPassword.length < 4) {
-                alert('密码長度至少需要 4 個字元。');
+                alert('密碼長度至少需要 4 個字元。');
                 return;
             }
 
-            const confirmPassword = prompt('請再次輸入新密码以确认：');
+            const confirmPassword = prompt('請再次輸入新密碼以確認：');
             if (newPassword !== confirmPassword) {
-                alert('兩次輸入的密码不一致！');
+                alert('兩次輸入的密碼不一致！');
                 return;
             }
 
             try {
                 const res = await axios.post('/api/user/change-password', { oldPassword, newPassword });
                 if (res.data.success) {
-                    alert('密码修改成功！');
+                    alert('密碼修改成功！');
                 }
             } catch (error) {
-                alert('密码修改失败：' + (error.response?.data?.message || '伺服器错误'));
+                alert('密碼修改失敗：' + (error.response?.data?.message || '伺服器錯誤'));
             }
         });
     }
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const files = e.target.files;
             if (files.length > 0) {
                 const folderName = files[0].webkitRelativePath.split('/')[0];
-                fileListContainer.innerHTML = `<li>已選擇文件夹: <b>${folderName}</b> (包含 ${files.length} 個文件)</li>`;
+                fileListContainer.innerHTML = `<li>已選擇資料夾: <b>${folderName}</b> (包含 ${files.length} 個檔案)</li>`;
                 uploadSubmitBtn.style.display = 'block';
             }
         });
@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await uploadFiles(Array.from(files), targetFolderId, false);
 
         } catch (error) {
-            showNotification('處理文件夹上传失败：' + (error.response?.data?.message || '伺服器错误'), 'error', uploadNotificationArea);
+            showNotification('處理資料夾上傳失敗：' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
         }
     }
 
@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetFolderId = folderSelect.value;
                 uploadFiles(Array.from(files), targetFolderId, false);
             } else {
-                showNotification('請選擇文件或文件夹。', 'error', uploadNotificationArea);
+                showNotification('請選擇檔案或資料夾。', 'error', uploadNotificationArea);
             }
         });
     }
@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (hasFolder) {
-                showNotification('不支援拖拽文件夹上传，請選擇文件。', 'error');
+                showNotification('不支援拖拽資料夾上傳，請選擇檔案。', 'error');
                 return;
             }
             
@@ -511,12 +511,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (createFolderBtn) {
         createFolderBtn.addEventListener('click', async () => {
-            const name = prompt('请输入新文件夹的名稱：');
+            const name = prompt('請輸入新資料夾的名稱：');
             if (name && name.trim()) {
                 try {
                     await axios.post('/api/folder', { name: name.trim(), parentId: currentFolderId });
                     loadFolderContents(currentFolderId);
-                } catch (error) { alert(error.response?.data?.message || '建立失败'); }
+                } catch (error) { alert(error.response?.data?.message || '建立失敗'); }
             }
         });
     }
@@ -581,11 +581,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!file) return;
 
             previewModal.style.display = 'flex';
-            modalContent.innerHTML = '正在加載预览...';
+            modalContent.innerHTML = '正在加載預覽...';
             const downloadUrl = `/download/proxy/${messageId}`;
 
             if (file.mimetype && file.mimetype.startsWith('image/')) {
-                modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片预览">`;
+                modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片預覽">`;
             } else if (file.mimetype && file.mimetype.startsWith('video/')) {
                 modalContent.innerHTML = `<video src="${downloadUrl}" controls autoplay></video>`;
             } else if (file.mimetype && (file.mimetype.startsWith('text/') || file.name.endsWith('.txt'))) {
@@ -594,10 +594,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const escapedContent = res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;");
                     modalContent.innerHTML = `<pre><code>${escapedContent}</code></pre>`;
                 } catch {
-                    modalContent.innerHTML = '無法載入文字内容。';
+                    modalContent.innerHTML = '無法載入文字內容。';
                 }
             } else {
-                modalContent.innerHTML = '此文件類型不支持预览。';
+                modalContent.innerHTML = '此檔案類型不支持預覽。';
             }
         });
     }
@@ -605,7 +605,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renameBtn.addEventListener('click', async () => {
              if (renameBtn.disabled) return;
              const [id, item] = selectedItems.entries().next().value;
-             const newName = prompt('请输入新的名稱:', item.name);
+             const newName = prompt('請輸入新的名稱:', item.name);
              if (newName && newName.trim() && newName !== item.name) {
                  try {
                     await axios.post('/rename', { 
@@ -615,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
                  } catch (error) {
-                     alert('重命名失败');
+                     alert('重命名失敗');
                  }
              }
         });
@@ -646,14 +646,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(link);
             } catch (error) {
-                alert('下载压缩檔失败！');
+                alert('下載壓縮檔失敗！');
             }
         });
     }
     if (deleteBtn) {
         deleteBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
-            if (!confirm(`确定要删除這 ${selectedItems.size} 個項目嗎？\n注意：删除文件夹將會一併删除其所有内容！`)) return;
+            if (!confirm(`確定要刪除這 ${selectedItems.size} 個項目嗎？\n注意：刪除資料夾將會一併刪除其所有內容！`)) return;
             const filesToDelete = [], foldersToDelete = [];
             selectedItems.forEach((item, id) => {
                 if (item.type === 'file') filesToDelete.push(parseInt(id));
@@ -663,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (filesToDelete.length > 0) await axios.post('/delete-multiple', { messageIds: filesToDelete });
                 for (const folderId of foldersToDelete) await axios.post('/api/folder/delete', { folderId });
                 isSearchMode ? executeSearch(searchInput.value.trim()) : loadFolderContents(currentFolderId);
-            } catch (error) { alert('删除失败，請重試。'); }
+            } catch (error) { alert('刪除失敗，請重試。'); }
         });
     }
     
@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
-            } catch { alert('無法獲取文件夹列表。'); }
+            } catch { alert('無法獲取資料夾列表。'); }
         });
     }
     if (folderTree) {
@@ -815,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification('項目移動成功！', 'success');
                 
             } catch (error) {
-                alert('操作失败：' + (error.response?.data?.message || '伺服器错误'));
+                alert('操作失敗：' + (error.response?.data?.message || '伺服器錯誤'));
             }
         });
     }
@@ -850,10 +850,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     shareOptions.style.display = 'none';
                     shareResult.style.display = 'block';
                 } else {
-                    alert('創建分享鏈接失败: ' + res.data.message);
+                    alert('創建分享鏈接失敗: ' + res.data.message);
                 }
             } catch {
-                alert('創建分享鏈接請求失败');
+                alert('創建分享鏈接請求失敗');
             }
         });
         copyLinkBtn.addEventListener('click', () => {
