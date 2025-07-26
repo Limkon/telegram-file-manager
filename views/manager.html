@@ -15,6 +15,7 @@
         <h1><i class="fas fa-home"></i> 我的文件</h1>
       </a>
       <div class="header-buttons">
+        <button id="view-switch-btn" class="upload-link-btn" title="切换视图"><i class="fas fa-list"></i></button>
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 管理共享</span></a>
         <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立资料夹</span></button>
         <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上传文件</span></button>
@@ -30,9 +31,17 @@
             <input type="search" id="searchInput" placeholder="搜寻所有档案...">
         </form>
     </div>
-    
+
     <div id="dropZone">
         <div class="item-grid" id="itemGrid"></div>
+        <div class="item-list-view" id="itemListView" style="display: none;">
+            <div class="list-header">
+                <div class="list-name">名称</div>
+                <div class="list-size">大小</div>
+                <div class="list-date">修改日期</div>
+            </div>
+            <div class="list-body" id="itemListBody"></div>
+        </div>
         <div id="dropZoneOverlay">
             <span>将文件拖到此处以上传</span>
         </div>
@@ -43,7 +52,7 @@
     <span class="close-button">&times;</span>
     <div class="modal-content preview-modal-content" id="modalContent"></div>
   </div>
-  
+
   <div id="shareModal" class="modal">
     <div class="share-modal-content">
         <h3 id="shareModalTitle">分享文件</h3>
@@ -83,7 +92,7 @@
   <div id="conflictModal" class="modal">
     <div class="move-modal-content">
         <h3>档案冲突</h3>
-        <p>目标资料夹中已存在同名档案：</p>
+        <p>目标资料夾中已存在同名档案：</p>
         <p><b id="conflictFileName"></b></p>
         <p>您要如何处理？</p>
         <div id="conflictOptions">
@@ -105,7 +114,7 @@
             <div class="upload-options">
                 <label for="fileInput" class="custom-upload-btn"><i class="fas fa-file"></i> 选择档案</label>
                 <input type="file" name="files" id="fileInput" multiple />
-                
+
                 <label for="folderInput" class="custom-upload-btn"><i class="fas fa-folder"></i> 选择资料夹</label>
                 <input type="file" id="folderInput" webkitdirectory directory />
             </div>
