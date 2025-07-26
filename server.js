@@ -387,14 +387,14 @@ async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
             for (const child of children) {
                 await moveItem(child.id, child.type, existingFolder.id, userId, overwrite);
             }
-            await data.deleteFolderRecursive(itemId, userId); // 刪除空的源資料夾
-        } else { // 正常移動
+            await data.deleteFolderRecursive(itemId, userId);
+        } else {
             await data.moveItems([itemId], targetFolderId, userId);
         }
-    } else { // itemType is 'file'
+    } else { // file
         const fileToMove = (await data.getFilesByIds([itemId], userId))[0];
         const conflict = await data.findFileInFolder(fileToMove.fileName, targetFolderId, userId);
-
+        
         if (conflict && overwrite) {
             const storage = storageManager.getStorage();
             const filesToDelete = await data.getFilesByIds([conflict.message_id], userId);
@@ -415,6 +415,20 @@ app.post('/api/move', requireLogin, async (req, res) => {
         }
         
         const items = await data.getItemsByIds(itemIds, userId);
+        
+        // 伺服器端驗證：防止移動到自身或子目錄
+        for (const item of items) {
+            if (item.type === 'folder') {
+                if (item.id === targetFolderId) {
+                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其自身內部。' });
+                }
+                const descendants = await data.getAllDescendantFolderIds(item.id, userId);
+                if (descendants.includes(targetFolderId)) {
+                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其子資料夾中。' });
+                }
+            }
+        }
+        
         for (const item of items) {
             await moveItem(item.id, item.type, targetFolderId, userId, overwrite);
         }
