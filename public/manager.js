@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const breadcrumb = document.getElementById('breadcrumb');
     const actionBar = document.getElementById('actionBar');
     const selectionCountSpan = document.getElementById('selectionCount');
-    const createFolderBtn = document.querySelector('.create-folder-btn');
+    const createFolderBtn = document.getElementById('createFolderBtn');
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     const multiSelectBtn = document.getElementById('multiSelectBtn');
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 辅助函式 ---
     const formatBytes = (bytes, decimals = 2) => {
-        if (bytes === 0) return '0 Bytes';
+        if (!bytes) return '0 Bytes';
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isSearchMode = false;
             if (searchInput) searchInput.value = '';
             itemGrid.innerHTML = '<p>正在加载...</p>';
+            itemListBody.innerHTML = '<p>正在加载...</p>';
             currentFolderId = folderId;
             const res = await axios.get(`/api/folder/${folderId}`);
             currentFolderContents = res.data.contents;
@@ -103,12 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = '/login';
             }
             itemGrid.innerHTML = '<p>加载内容失败。</p>';
+            itemListBody.innerHTML = '<p>加载内容失败。</p>';
         }
     };
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
             itemGrid.innerHTML = '<p>正在搜寻...</p>';
+            itemListBody.innerHTML = '<p>正在搜寻...</p>';
             const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
             currentFolderContents = res.data.contents;
             selectedItems.clear();
@@ -117,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateActionBar();
         } catch (error) {
             itemGrid.innerHTML = '<p>搜寻失败。</p>';
+            itemListBody.innerHTML = '<p>搜寻失败。</p>';
         }
     };
     const renderBreadcrumb = (path) => {
@@ -456,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await uploadFiles(Array.from(files), targetFolderId, false);
 
         } catch (error) {
-            showNotification('处理资料夹上传失败：' + (error.response?.data?.message || '伺服器错误'), 'error', uploadNotificationArea);
+            showNotification('处理资料夾上传失败：' + (error.response?.data?.message || '伺服器错误'), 'error', uploadNotificationArea);
         }
     }
 
