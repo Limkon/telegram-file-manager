@@ -56,30 +56,30 @@
         </header>
 
         <div class="setting-card">
-            <h2>儲存設定</h2>
-            <p>目前儲存模式: <b id="current-mode">加載中...</b></p>
-            <p>警告：切換儲存模式不會遷移現有檔案。切換後，舊模式下的檔案將無法在管理器中存取。</p>
+            <h2>保存设置</h2>
+            <p>目前保存模式: <b id="current-mode">加載中...</b></p>
+            <p>警告：切換保存模式不會遷移現有文件。切換後，舊模式下的文件將無法在管理器中存取。</p>
             <hr>
-            <label for="storage-select">選擇新的儲存模式：</label>
+            <label for="storage-select">選擇新的保存模式：</label>
             <select id="storage-select">
                 <option value="telegram">Telegram</option>
                 <option value="local">本地伺服器</option>
             </select>
-            <button id="save-btn">儲存設定</button>
+            <button id="save-btn">保存设置</button>
             <p id="save-status" style="color: green;"></p>
         </div>
 
         <div class="setting-card">
-            <h2>使用者管理</h2>
+            <h2>用户管理</h2>
             <form id="add-user-form">
-                <input type="text" id="new-username" placeholder="新用戶名" required>
-                <input type="password" id="new-password" placeholder="新密碼 (至少4位)" required>
-                <button type="submit">新增使用者</button>
+                <input type="text" id="new-username" placeholder="新用户名" required>
+                <input type="password" id="new-password" placeholder="新密码 (至少4位)" required>
+                <button type="submit">新增用户</button>
             </form>
             <table class="user-table">
                 <thead>
                     <tr>
-                        <th>使用者名稱</th>
+                        <th>用户名稱</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -109,13 +109,13 @@
                     currentModeEl.textContent = res.data.mode === 'local' ? '本地伺服器' : 'Telegram';
                     storageSelect.value = res.data.mode;
                 } catch (error) {
-                    currentModeEl.textContent = '讀取失敗';
+                    currentModeEl.textContent = '讀取失败';
                 }
             }
 
             saveBtn.addEventListener('click', async () => {
                 const newMode = storageSelect.value;
-                if (!confirm(`確定要將儲存模式切換為 "${newMode}" 嗎？`)) {
+                if (!confirm(`确定要將保存模式切換為 "${newMode}" 嗎？`)) {
                     return;
                 }
                 try {
@@ -125,7 +125,7 @@
                         loadCurrentMode();
                     }
                 } catch (error) {
-                    saveStatus.textContent = '儲存失敗！';
+                    saveStatus.textContent = '保存失败！';
                 }
             });
             
@@ -139,15 +139,15 @@
                             <tr>
                                 <td>${user.username}</td>
                                 <td class="actions">
-                                    <button class="change-pass-btn" data-userid="${user.id}" data-username="${user.username}">改密碼</button>
-                                    <button class="delete-user-btn" data-userid="${user.id}" data-username="${user.username}">刪除</button>
+                                    <button class="change-pass-btn" data-userid="${user.id}" data-username="${user.username}">改密码</button>
+                                    <button class="delete-user-btn" data-userid="${user.id}" data-username="${user.username}">删除</button>
                                 </td>
                             </tr>
                         `;
                         userTableBody.innerHTML += row;
                     });
                 } catch (error) {
-                    userTableBody.innerHTML = '<tr><td colspan="2">加載使用者失敗</td></tr>';
+                    userTableBody.innerHTML = '<tr><td colspan="2">加載用户失败</td></tr>';
                 }
             }
 
@@ -161,10 +161,10 @@
                     await axios.post('/api/admin/add-user', { username, password });
                     newUsernameInput.value = '';
                     newPasswordInput.value = '';
-                    alert('使用者新增成功！');
+                    alert('用户新增成功！');
                     loadUsers();
                 } catch (error) {
-                    alert('新增失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                    alert('新增失败：' + (error.response?.data?.message || '伺服器错误'));
                 }
             });
 
@@ -174,27 +174,27 @@
                 const username = target.dataset.username;
 
                 if (target.classList.contains('change-pass-btn')) {
-                    const newPassword = prompt(`請為使用者 "${username}" 輸入新密碼：`);
+                    const newPassword = prompt(`請為用户 "${username}" 輸入新密码：`);
                     if (newPassword && newPassword.length >= 4) {
                         try {
                             await axios.post('/api/admin/change-password', { userId, newPassword });
-                            alert(`使用者 "${username}" 的密碼已更新。`);
+                            alert(`用户 "${username}" 的密码已更新。`);
                         } catch (error) {
-                            alert('密碼更新失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                            alert('密码更新失败：' + (error.response?.data?.message || '伺服器错误'));
                         }
                     } else if (newPassword) {
-                        alert('密碼長度至少需要 4 個字元。');
+                        alert('密码長度至少需要 4 個字元。');
                     }
                 }
 
                 if (target.classList.contains('delete-user-btn')) {
-                    if (confirm(`確定要刪除使用者 "${username}" 嗎？\n此操作將會刪除該使用者的所有檔案和資料夾，且無法復原！`)) {
+                    if (confirm(`确定要删除用户 "${username}" 嗎？\n此操作將會删除該用户的所有文件和文件夹，且無法復原！`)) {
                         try {
                             await axios.post('/api/admin/delete-user', { userId });
-                            alert(`使用者 "${username}" 已被刪除。`);
+                            alert(`用户 "${username}" 已被删除。`);
                             loadUsers();
                         } catch (error) {
-                             alert('刪除失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                             alert('删除失败：' + (error.response?.data?.message || '伺服器错误'));
                         }
                     }
                 }

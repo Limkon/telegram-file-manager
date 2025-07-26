@@ -24,7 +24,7 @@ body {
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
-/* --- 關鍵修正 1：移除標題底線 --- */
+/* --- 關鍵修正 1：移除标题底線 --- */
 .main-header a, #homeLink {
   text-decoration: none;
 }
@@ -105,9 +105,9 @@ body {
     gap: 20px;
     padding-bottom: 100px;
 }
-/* --- 關鍵修正 2：在網格為空時顯示提示文字 --- */
+/* --- 關鍵修正 2：在網格為空時显示提示文字 --- */
 .item-grid:empty::after {
-    content: '將文件拖到此處以上傳';
+    content: '將文件拖到此處以上传';
     position: absolute;
     top: 50%;
     left: 50%;
