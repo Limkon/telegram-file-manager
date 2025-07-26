@@ -37,7 +37,7 @@ body {
   gap: 8px;
   border: none;
   cursor: pointer;
-  font-size: 16px; /* 明確定義基礎字體大小 */
+  font-size: 16px;
 }
 .upload-link-btn:hover {
   background-color: #0069d9;
@@ -118,10 +118,11 @@ body {
     color: var(--text-color);
 }
 
+/* --- *** 關鍵修正 開始 *** --- */
 /* 浮動操作欄 */
 .action-bar {
   position: fixed;
-  bottom: -100px;
+  bottom: 20px; /* 直接顯示在底部 */
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
@@ -134,10 +135,10 @@ body {
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
-  transition: bottom 0.3s ease-in-out;
   z-index: 1000;
 }
-.action-bar.visible { bottom: 20px; }
+/* --- *** 關鍵修正 結束 *** --- */
+
 .action-bar #selectAllBtn { background: #495057; color: white; border: none; padding: 8px 12px; margin-right: 15px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
 .action-bar #selectionCount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
 .action-bar .actions { display: flex; align-items: center; }
@@ -201,9 +202,8 @@ body {
     .action-bar {
         padding: 10px;
         width: 95%;
-        bottom: -120px;
+        bottom: 10px; /* 手機端也直接顯示 */
     }
-     .action-bar.visible { bottom: 10px; }
 
     .action-bar #selectionCount {
         font-size: 12px;
@@ -221,11 +221,11 @@ body {
 }
 
 /* --- 圖示顏色 --- */
-.item-icon i.fa-folder { color: #ffc107; } /* 資料夾: 黃色 */
-.item-icon i.fa-file-pdf { color: #e63946; } /* PDF: 紅色 */
-.item-icon i.fa-file-archive { color: #f77f00; } /* 壓縮檔: 橘色 */
-.item-icon i.fa-file-video { color: #8338ec; } /* 影片: 紫色 */
-.item-icon i.fa-file-audio { color: #00b4d8; } /* 音訊: 藍色 */
-.item-icon i.fa-file-image { color: #52b788; } /* 圖片: 綠色 */
-.item-icon i.fa-file-alt { color: #495057; } /* 文字檔: 深灰色 */
-.item-icon i.fa-file { color: #adb5bd; } /* 未知檔案: 淺灰色 */
+.item-icon i.fa-folder { color: #ffc107; }
+.item-icon i.fa-file-pdf { color: #e63946; }
+.item-icon i.fa-file-archive { color: #f77f00; }
+.item-icon i.fa-file-video { color: #8338ec; }
+.item-icon i.fa-file-audio { color: #00b4d8; }
+.item-icon i.fa-file-image { color: #52b788; }
+.item-icon i.fa-file-alt { color: #495057; }
+.item-icon i.fa-file { color: #adb5bd; }
