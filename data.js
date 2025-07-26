@@ -53,7 +53,7 @@ function listNormalUsers() {
 
 function deleteUser(userId) {
     return new Promise((resolve, reject) => {
-        const sql = `DELETE FROM users WHERE id = ? AND is_admin = 0`; 
+        const sql = `DELETE FROM users WHERE id = ? AND is_admin = 0`;
         db.run(sql, [userId], function(err) {
             if (err) return reject(err);
             resolve({ success: true, changes: this.changes });
@@ -65,8 +65,8 @@ function deleteUser(userId) {
 // --- 档案搜寻 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
-        const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
-                     FROM files 
+        const sql = `SELECT *, message_id as id, fileName as name, 'file' as type
+                     FROM files
                      WHERE fileName LIKE ? AND user_id = ?
                      ORDER BY date DESC`;
         const searchQuery = `%${query}%`;
@@ -270,11 +270,11 @@ async function deleteFolderRecursive(folderId, userId) {
 }
 
 function addFile(fileData, folderId = 1, userId, storageType) {
-    const { message_id, fileName, mimetype, file_id, thumb_file_id, date } = fileData;
-    const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, folder_id, user_id, storage_type)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const { message_id, fileName, mimetype, file_id, thumb_file_id, date, size } = fileData;
+    const sql = `INSERT INTO files (message_id, fileName, mimetype, file_id, thumb_file_id, date, size, folder_id, user_id, storage_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     return new Promise((resolve, reject) => {
-        db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, folderId, userId, storageType], function(err) {
+        db.run(sql, [message_id, fileName, mimetype, file_id, thumb_file_id, date, size, folderId, userId, storageType], function(err) {
             if (err) reject(err);
             else resolve({ success: true, id: this.lastID, fileId: this.lastID });
         });
@@ -336,7 +336,7 @@ function findFileInSharedFolder(fileId, folderToken) {
         `;
         db.get(sql, [fileId, folderToken], (err, row) => {
             if (err) return reject(err);
-            resolve(row); 
+            resolve(row);
         });
     });
 }
@@ -379,12 +379,12 @@ function createShareLink(itemId, itemType, expiresIn, userId) {
         case '0': expiresAt = null; break;
         default: expiresAt = now + hours(24);
     }
-    
+
     const table = itemType === 'folder' ? 'folders' : 'files';
     const idColumn = itemType === 'folder' ? 'id' : 'message_id';
-    
+
     const sql = `UPDATE ${table} SET share_token = ?, share_expires_at = ? WHERE ${idColumn} = ? AND user_id = ?`;
-    
+
     return new Promise((resolve, reject) => {
         db.run(sql, [token, expiresAt, itemId, userId], function(err) {
             if (err) reject(err);
@@ -428,7 +428,7 @@ function cancelShare(itemId, itemType, userId) {
     const table = itemType === 'folder' ? 'folders' : 'files';
     const idColumn = itemType === 'folder' ? 'id' : 'message_id';
     const sql = `UPDATE ${table} SET share_token = NULL, share_expires_at = NULL WHERE ${idColumn} = ? AND user_id = ?`;
-    
+
     return new Promise((resolve, reject) => {
         db.run(sql, [itemId, userId], function(err) {
             if (err) reject(err);
@@ -461,35 +461,35 @@ function findFileInFolder(fileName, folderId, userId) {
     });
 }
 
-module.exports = { 
+module.exports = {
     createUser,
     findUserByName,
     findUserById,
     changeUserPassword,
     listNormalUsers,
     deleteUser,
-    searchFiles, 
-    getFolderContents, 
-    getFilesRecursive, 
-    getFolderPath, 
+    searchFiles,
+    getFolderContents,
+    getFilesRecursive,
+    getFolderPath,
     createFolder,
     findFolderByName,
-    getAllFolders, 
+    getAllFolders,
     getAllDescendantFolderIds,
-    deleteFolderRecursive, 
+    deleteFolderRecursive,
     deleteSingleFolder,
-    addFile, 
-    getFilesByIds, 
+    addFile,
+    getFilesByIds,
     getItemsByIds,
     getChildrenOfFolder,
-    moveItems, 
-    getFileByShareToken, 
+    moveItems,
+    getFileByShareToken,
     getFolderByShareToken,
     findFileInSharedFolder,
-    createShareLink, 
-    getActiveShares, 
-    cancelShare, 
-    renameFile, 
+    createShareLink,
+    getActiveShares,
+    cancelShare,
+    renameFile,
     renameFolder,
     deleteFilesByIds,
     findFileInFolder,
