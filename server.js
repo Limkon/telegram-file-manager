@@ -351,23 +351,16 @@ app.post('/api/folder', requireLogin, async (req, res) => {
     if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少資料夾名稱或父 ID。' });
     
     try {
-        const result = await data.createFolder(name, parentId, userId);
-        res.json(result);
-    } catch (error) {
-        if (error && error.message.includes('UNIQUE')) {
-            try {
-                const existingFolder = await data.findFolderByName(name, parentId, userId);
-                if (existingFolder) {
-                    res.json({ success: true, id: existingFolder.id, existed: true });
-                } else {
-                    res.status(500).json({ success: false, message: '檢查現有資料夾時出錯。' });
-                }
-            } catch (findError) {
-                res.status(500).json({ success: false, message: '尋找現有資料夾失敗。' });
-            }
+        const existingFolder = await data.findFolderByName(name, parentId, userId);
+
+        if (existingFolder) {
+            res.json({ success: true, id: existingFolder.id, existed: true });
         } else {
-             res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' });
+            const result = await data.createFolder(name, parentId, userId);
+            res.json(result);
         }
+    } catch (error) {
+         res.status(500).json({ success: false, message: error.message || '處理資料夾時發生錯誤。' });
     }
 });
 
