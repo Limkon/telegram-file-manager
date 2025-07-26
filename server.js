@@ -409,6 +409,18 @@ app.post('/api/move', requireLogin, async (req, res) => {
         const items = await data.getItemsByIds(itemIds, userId);
         
         for (const item of items) {
+            if (item.type === 'folder') {
+                if (item.id === targetFolderId) {
+                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其自身內部。' });
+                }
+                const descendants = await data.getAllDescendantFolderIds(item.id, userId);
+                if (descendants.includes(targetFolderId)) {
+                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其子資料夾中。' });
+                }
+            }
+        }
+        
+        for (const item of items) {
             await moveItem(item.id, item.type, targetFolderId, userId, overwriteList);
         }
         
