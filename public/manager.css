@@ -24,7 +24,6 @@ body {
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
-/* --- 关键修正 1：移除标题底线 --- */
 .main-header a, #homeLink {
   text-decoration: none;
 }
@@ -47,7 +46,6 @@ body {
   background-color: #0069d9;
 }
 
-/* 面包屑 */
 .breadcrumb {
     display: flex;
     align-items: center;
@@ -66,7 +64,6 @@ body {
 .breadcrumb span { color: #6c757d; font-weight: normal; }
 .breadcrumb .separator { margin: 0 10px; color: #6c757d; }
 
-/* 项目网格与拖拽区域 */
 #dropZone {
     position: relative;
     border: 2px dashed #ccc;
@@ -105,7 +102,6 @@ body {
     gap: 20px;
     padding-bottom: 100px;
 }
-/* --- 关键修正 2：在网格为空时显示提示文字 --- */
 .item-grid:empty::after {
     content: '将文件拖到此处以上传';
     position: absolute;
@@ -167,7 +163,60 @@ body {
     color: var(--text-color);
 }
 
-/* 浮动操作栏 */
+.item-list-view {
+    padding-bottom: 100px;
+}
+
+.list-header, .list-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.list-header {
+    font-weight: bold;
+    background-color: #e9ecef;
+    border-radius: 5px 5px 0 0;
+}
+
+.list-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.list-item:hover {
+    background-color: #f1f3f5;
+}
+
+.list-item.selected {
+    background-color: #cfe2ff;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 6px;
+}
+
+.list-icon {
+    width: 30px;
+    text-align: center;
+    margin-right: 15px;
+    font-size: 1.2em;
+}
+.list-icon .fa-folder { color: #ffc107; }
+
+.list-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.list-size, .list-date {
+    width: 150px;
+    text-align: right;
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
 .action-bar {
   position: fixed;
   bottom: 20px;
@@ -196,29 +245,27 @@ body {
 .action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
 .action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
 
-/* 模态框 */
-/* --- *** 关键修正 3：修改弹窗背景为浅色 --- */
-.modal { 
-    display: none; 
-    position: fixed; 
-    z-index: 1001; 
-    left: 0; 
-    top: 0; 
-    width: 100%; 
-    height: 100%; 
-    overflow: auto; 
-    background-color: rgba(248, 249, 250, 0.95); 
-    align-items: center; 
-    justify-content: center; 
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(248, 249, 250, 0.95);
+    align-items: center;
+    justify-content: center;
 }
 .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; }
 .modal-content img, .modal-content video { width: auto; height: auto; max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
 .close-button { position: absolute; top: 15px; right: 35px; color: #333; font-size: 40px; font-weight: bold; cursor: pointer; }
-.preview-modal-content { 
+.preview-modal-content {
     background: transparent;
-    width: auto; 
-    max-width: 90vw; 
-    max-height: 90vh; 
+    width: auto;
+    max-width: 90vw;
+    max-height: 90vh;
 }
 #previewModal .close-button {
     color: #333;
@@ -272,7 +319,6 @@ body {
 #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
 #conflictOptions button { width: auto; padding: 8px 16px; }
 
-/* --- 手机端优化 --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;
@@ -306,6 +352,12 @@ body {
     }
     .item-info h5 {
         font-size: 12px;
+    }
+    .list-size, .list-date {
+        display: none;
+    }
+    .list-name {
+        flex-grow: 1;
     }
     .action-bar {
         padding: 10px;
