@@ -220,20 +220,91 @@ function getAllFolders(userId) {
     });
 }
 
+// --- *** 完整替换 *** ---
+async function moveItem(itemId, itemType, targetFolderId, userId, options = {}) {
+    const { overwriteList = [], mergeList = [] } = options;
+
+    if (itemType === 'folder') {
+        const folderToMove = (await getItemsByIds([itemId], userId))[0];
+        if (!folderToMove) throw new Error(`找不到来源资料夹 ID: ${itemId}`);
+
+        const existingFolder = await findFolderByName(folderToMove.name, targetFolderId, userId);
+
+        if (existingFolder) {
+            if (mergeList.includes(folderToMove.name)) {
+                // 合并逻辑
+                const children = await getChildrenOfFolder(itemId, userId);
+                for (const child of children) {
+                    // 递归调用，将子项目移动到已存在的目标资料夹中
+                    await moveItem(child.id, child.type, existingFolder.id, userId, options);
+                }
+                await deleteSingleFolder(itemId, userId); // 删除空的来源资料夹
+            }
+            // 如果不在 mergeList 中，则代表使用者选择 "skip"，我们什么都不做
+        } else {
+            // 没有冲突，直接移动
+            await moveItems([], [itemId], targetFolderId, userId);
+        }
+    } else { // file
+        const fileToMove = (await getFilesByIds([itemId], userId))[0];
+        if (!fileToMove) throw new Error(`找不到来源档案 ID: ${itemId}`);
+        
+        const conflict = await findFileInFolder(fileToMove.fileName, targetFolderId, userId);
+        
+        if (conflict && overwriteList.includes(fileToMove.fileName)) {
+            // 覆盖逻辑
+            const storage = require('./storage').getStorage();
+            const filesToDelete = await getFilesByIds([conflict.message_id], userId);
+            await storage.remove(filesToDelete, userId); // 这会自动从 DB 中删除记录
+            await moveItems([itemId], [], targetFolderId, userId);
+        } else if (!conflict) {
+            // 没有冲突，直接移动
+            await moveItems([itemId], [], targetFolderId, userId);
+        }
+        // 如果有冲突但不在 overwriteList 中，代表 "skip"，我们什么都不做
+    }
+}
+
 function moveItems(fileIds, folderIds, targetFolderId, userId) {
     return new Promise((resolve, reject) => {
         db.serialize(() => {
+            db.run("BEGIN TRANSACTION;");
+            let completed = 0;
+            const total = (fileIds ? fileIds.length : 0) + (folderIds ? folderIds.length : 0);
+            const done = () => {
+                completed++;
+                if (completed === total) {
+                    db.run("COMMIT;", (err) => {
+                        if(err) reject(err);
+                        else resolve({ success: true });
+                    });
+                }
+            };
+            const handleError = (err) => {
+                db.run("ROLLBACK;");
+                reject(err);
+            };
+
             if (fileIds && fileIds.length > 0) {
                 const filePlaceholders = fileIds.map(() => '?').join(',');
                 const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${filePlaceholders}) AND user_id = ?`;
-                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId]);
+                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], function(err){
+                    if(err) return handleError(err);
+                    done();
+                });
             }
             if (folderIds && folderIds.length > 0) {
                 const folderPlaceholders = folderIds.map(() => '?').join(',');
                 const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
-                db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId]);
+                 db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId], function(err){
+                    if(err) return handleError(err);
+                    done();
+                });
             }
-            resolve({ success: true });
+             if (total === 0) {
+                db.run("COMMIT;");
+                resolve({ success: true });
+            }
         });
     });
 }
@@ -451,6 +522,21 @@ function checkNameConflict(itemNames, targetFolderId, userId) {
     });
 }
 
+// --- *** 新增函式 *** ---
+function checkFolderConflict(folderNames, targetFolderId, userId) {
+    return new Promise((resolve, reject) => {
+        if (!folderNames || folderNames.length === 0) {
+            return resolve([]);
+        }
+        const placeholders = folderNames.map(() => '?').join(',');
+        const sql = `SELECT name FROM folders WHERE name IN (${placeholders}) AND parent_id = ? AND user_id = ?`;
+        db.all(sql, [...folderNames, targetFolderId, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows.map(r => r.name));
+        });
+    });
+}
+
 function findFileInFolder(fileName, folderId, userId) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT message_id FROM files WHERE fileName = ? AND folder_id = ? AND user_id = ?`;
@@ -483,6 +569,7 @@ module.exports = {
     getItemsByIds,
     getChildrenOfFolder,
     moveItems,
+    moveItem, // <-- 新增
     getFileByShareToken,
     getFolderByShareToken,
     findFileInSharedFolder,
@@ -493,5 +580,6 @@ module.exports = {
     renameFolder,
     deleteFilesByIds,
     findFileInFolder,
-    checkNameConflict
+    checkNameConflict,
+    checkFolderConflict // <-- 新增
 };
