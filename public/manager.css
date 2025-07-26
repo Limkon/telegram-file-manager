@@ -24,6 +24,10 @@ body {
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
+/* --- 關鍵修正 1：移除標題底線 --- */
+.main-header a, #homeLink {
+  text-decoration: none;
+}
 .upload-link-btn {
   background-color: var(--primary-color);
   color: white;
@@ -37,7 +41,7 @@ body {
   gap: 8px;
   border: none;
   cursor: pointer;
-  font-size: 16px; /* 明確定義基礎字體大小 */
+  font-size: 16px;
 }
 .upload-link-btn:hover {
   background-color: #0069d9;
@@ -62,12 +66,55 @@ body {
 .breadcrumb span { color: #6c757d; font-weight: normal; }
 .breadcrumb .separator { margin: 0 10px; color: #6c757d; }
 
-/* 項目網格 */
+/* 項目網格與拖拽區域 */
+#dropZone {
+    position: relative;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color 0.3s, background-color 0.3s;
+    min-height: 300px;
+}
+#dropZone.dragover {
+    border-color: var(--primary-color);
+    background-color: #f0f8ff;
+}
+#dropZoneOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 123, 255, 0.1);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 8px;
+}
+#dropZone.dragover #dropZoneOverlay {
+    display: flex;
+}
 .item-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
     padding-bottom: 100px;
+}
+/* --- 關鍵修正 2：在網格為空時顯示提示文字 --- */
+.item-grid:empty::after {
+    content: '將文件拖到此處以上傳';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #adb5bd;
+    font-size: 1.2rem;
+    pointer-events: none;
 }
 .item-card {
     background: var(--card-background);
@@ -96,13 +143,15 @@ body {
     font-size: 64px;
     overflow: hidden;
 }
-.item-icon i.fas { color: #adb5bd; }
-.item-icon img,
-.item-icon video { 
-    width: 100%; 
-    height: 100%; 
-    object-fit: cover; 
-}
+.item-icon .fa-folder { color: #ffc107; }
+.item-icon i.fa-file-pdf { color: #e63946; }
+.item-icon i.fa-file-archive { color: #f77f00; }
+.item-icon i.fa-file-video { color: #8338ec; }
+.item-icon i.fa-file-audio { color: #00b4d8; }
+.item-icon i.fa-file-image { color: #52b788; }
+.item-icon i.fa-file-alt { color: #495057; }
+.item-icon i.fa-file { color: #adb5bd; }
+.item-icon img, .item-icon video { width: 100%; height: 100%; object-fit: cover; }
 .item-info {
     padding: 12px;
     border-top: 1px solid var(--border-color);
@@ -118,11 +167,10 @@ body {
     color: var(--text-color);
 }
 
-/* --- *** 關鍵修正 開始 *** --- */
 /* 浮動操作欄 */
 .action-bar {
   position: fixed;
-  bottom: 20px; /* 直接顯示在底部 */
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
@@ -135,11 +183,10 @@ body {
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+  transition: bottom 0.3s ease-in-out;
   z-index: 1000;
-  transition: bottom 0.3s ease-in-out; /* 保留動畫效果 */
 }
-/* --- *** 關鍵修正 結束 *** --- */
-
+.action-bar.visible { bottom: 20px; }
 .action-bar #selectAllBtn { background: #495057; color: white; border: none; padding: 8px 12px; margin-right: 15px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
 .action-bar #selectionCount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
 .action-bar .actions { display: flex; align-items: center; }
@@ -150,66 +197,124 @@ body {
 .action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
 
 /* 模態框 */
-.modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); align-items: center; justify-content: center; }
+/* --- *** 關鍵修正 3：修改彈窗背景為淺色 --- */
+.modal { 
+    display: none; 
+    position: fixed; 
+    z-index: 1001; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(248, 249, 250, 0.95); 
+    align-items: center; 
+    justify-content: center; 
+}
 .modal-content { margin: auto; display: block; max-width: 90%; max-height: 90%; }
 .modal-content img, .modal-content video { width: auto; height: auto; max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
-.close-button { position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+.close-button { position: absolute; top: 15px; right: 35px; color: #333; font-size: 40px; font-weight: bold; cursor: pointer; }
+.preview-modal-content { 
+    background: transparent;
+    width: auto; 
+    max-width: 90vw; 
+    max-height: 90vh; 
+}
+#previewModal .close-button {
+    color: #333;
+}
+.preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
+.no-preview { color: #212529; text-align: center; }
+.no-preview i { font-size: 48px; margin-bottom: 10px; display: block; }
+.share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
+.share-modal-content h3 { margin-top: 0; }
+.share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
+.share-modal-content .confirm-share { background-color: var(--primary-color); color: white; border: none; cursor: pointer; }
+.share-modal-content .cancel-share { background-color: #6c757d; color: white; border: none; cursor: pointer; }
+.share-link-container { margin-top: 20px; word-wrap: break-word; background-color: #f1f3f5; padding: 10px; border-radius: 5px; text-align: left; }
+.move-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; text-align: center; }
+.move-modal-content h3 { margin-top: 0; }
+#folderTree { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-top: 15px; }
+#folderTree .folder-item { padding: 8px; cursor: pointer; border-radius: 4px; }
+#folderTree .folder-item:hover { background-color: #f1f3f5; }
+#folderTree .folder-item.selected { background-color: var(--primary-color); color: white; }
+#confirmMoveBtn, #cancelMoveBtn { width: 48%; padding: 10px; margin-top: 15px; border-radius: 5px; border: none; cursor: pointer; }
+#confirmMoveBtn { background-color: var(--primary-color); color: white; }
+#cancelMoveBtn { background-color: #6c757d; color: white; }
+.create-folder-btn { background-color: #17a2b8; }
+.search-form { position: relative; flex-grow: 1; max-width: 400px; }
+#searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
+.search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
+#multiSelectBtn.active { background-color: var(--primary-color); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--primary-color); }
+.upload-modal-content { background-color: var(--card-background); padding: 24px; border-radius: 8px; box-shadow: var(--shadow); width: 100%; max-width: 600px; position: relative; }
+#uploadForm input, #uploadForm button, #uploadForm select { width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
+#uploadForm button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-size: 16px; }
+#file-selection-list { margin-top: -10px; margin-bottom: 15px; padding-left: 0; list-style-type: none; max-height: 150px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px; padding: 5px; }
+#file-selection-list li { font-size: 14px; padding: 5px 10px; background-color: #f8f9fa; margin-bottom: 5px; border-radius: 3px; }
+.progress-area { margin-top: 15px; display: none; }
+.progress-bar-container { width: 100%; height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; }
+.progress-bar { width: 0%; height: 100%; background-color: var(--primary-color); text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.4s ease; }
+.notification { padding: 12px 20px; border-radius: 5px; color: white; z-index: 1000; font-weight: bold; }
+.notification.global { position: fixed; top: 20px; right: 20px; }
+.notification.local { margin-bottom: 15px; }
+.notification.success { background-color: #28a745; }
+.notification.error { background-color: #dc3545; }
+.header-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+#changePasswordBtn { background-color: #ffc107; }
+#logoutBtn { background-color: #dc3545; }
+.upload-options { display: flex; gap: 10px; margin-bottom: 15px; }
+.upload-options .custom-upload-btn { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; cursor: pointer; text-align: center; }
+.upload-options .custom-upload-btn:hover { background-color: #e2e6ea; }
+.upload-options input[type="file"] { display: none; }
+#conflictModal .move-modal-content { max-width: 500px; }
+#conflictModal p { margin-bottom: 10px; }
+#conflictFileName { font-weight: bold; color: #dc3545; }
+#conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
+#conflictOptions button { width: auto; padding: 8px 16px; }
 
-
-/* --- 手機端優化 (當螢幕寬度小於 768px 時生效) --- */
+/* --- 手機端優化 --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;
     }
-
     .main-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-
     .main-header h1 {
         font-size: 24px;
     }
-    
     .main-header .upload-link-btn {
         padding: 8px 10px;
         font-size: 13px;
         gap: 6px;
     }
-    
     .breadcrumb {
         font-size: 14px;
         padding: 8px 10px;
     }
-
     .item-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 15px;
     }
-    
     .item-icon {
         font-size: 48px;
     }
-
     .item-info {
         padding: 8px;
     }
-
     .item-info h5 {
         font-size: 12px;
     }
-
     .action-bar {
         padding: 10px;
         width: 95%;
-        bottom: 10px; /* 手機端也直接顯示 */
+        bottom: 10px;
     }
-
     .action-bar #selectionCount {
         font-size: 12px;
     }
-    
     .action-bar .actions button {
         padding: 8px;
         margin-left: 5px;
@@ -220,13 +325,3 @@ body {
         display: none;
     }
 }
-
-/* --- 圖示顏色 --- */
-.item-icon i.fa-folder { color: #ffc107; }
-.item-icon i.fa-file-pdf { color: #e63946; }
-.item-icon i.fa-file-archive { color: #f77f00; }
-.item-icon i.fa-file-video { color: #8338ec; }
-.item-icon i.fa-file-audio { color: #00b4d8; }
-.item-icon i.fa-file-image { color: #52b788; }
-.item-icon i.fa-file-alt { color: #495057; }
-.item-icon i.fa-file { color: #adb5bd; }
