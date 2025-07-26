@@ -665,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // --- *** 關鍵修正 開始 *** ---
     if (moveBtn) {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
@@ -684,16 +683,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const selectedFolderIds = new Set();
+                const disabledFolderIds = new Set();
                 selectedItems.forEach((item, id) => {
                     if (item.type === 'folder') {
                         const folderId = parseInt(id);
-                        selectedFolderIds.add(folderId);
+                        disabledFolderIds.add(folderId);
                         const findDescendants = (parentId) => {
                             const parentNode = folderMap.get(parentId);
                             if (parentNode && parentNode.children) {
                                 parentNode.children.forEach(child => {
-                                    selectedFolderIds.add(child.id);
+                                    disabledFolderIds.add(child.id);
                                     findDescendants(child.id);
                                 });
                             }
@@ -703,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const buildTree = (node, prefix = '') => {
-                    const isDisabled = selectedFolderIds.has(node.id) || node.id === currentFolderId;
+                    const isDisabled = disabledFolderIds.has(node.id) || node.id === currentFolderId;
                     
                     const item = document.createElement('div');
                     item.className = 'folder-item';
@@ -726,7 +725,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch { alert('無法獲取資料夾列表。'); }
         });
     }
-
     if (folderTree) {
         folderTree.addEventListener('click', e => {
             const target = e.target.closest('.folder-item');
@@ -819,8 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 關鍵修正 結束 *** ---
-
+    
     if (shareBtn && shareModal) {
         const shareOptions = document.getElementById('shareOptions');
         const shareResult = document.getElementById('shareResult');
