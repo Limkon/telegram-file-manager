@@ -437,36 +437,19 @@ function cancelShare(itemId, itemType, userId) {
         });
     });
 }
-async function checkMoveConflicts(itemIds, targetFolderId, userId) {
-    const items = await getItemsByIds(itemIds, userId);
-    const itemNames = items.map(i => i.name);
-    
-    if (itemNames.length === 0) {
-        return { files: [], folders: [] };
-    }
-
-    const placeholders = itemNames.map(() => '?').join(',');
-
-    const fileSql = `SELECT fileName as name FROM files WHERE fileName IN (${placeholders}) AND folder_id = ? AND user_id = ?`;
-    const folderSql = `SELECT name FROM folders WHERE name IN (${placeholders}) AND parent_id = ? AND user_id = ?`;
-
-    const conflictingFiles = await new Promise((resolve, reject) => {
-        db.all(fileSql, [...itemNames, targetFolderId, userId], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows.map(r => r.name));
+function checkNameConflict(itemNames, targetFolderId, userId) {
+    return new Promise((resolve, reject) => {
+        if (!itemNames || itemNames.length === 0) {
+            return resolve([]);
+        }
+        const placeholders = itemNames.map(() => '?').join(',');
+        const sql = `SELECT fileName FROM files WHERE fileName IN (${placeholders}) AND folder_id = ? AND user_id = ?`;
+        db.all(sql, [...itemNames, targetFolderId, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows.map(r => r.fileName));
         });
     });
-
-    const conflictingFolders = await new Promise((resolve, reject) => {
-        db.all(folderSql, [...itemNames, targetFolderId, userId], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows.map(r => r.name));
-        });
-    });
-
-    return { files: conflictingFiles, folders: conflictingFolders };
 }
-
 
 function findFileInFolder(fileName, folderId, userId) {
     return new Promise((resolve, reject) => {
@@ -510,5 +493,5 @@ module.exports = {
     renameFolder,
     deleteFilesByIds,
     findFileInFolder,
-    checkMoveConflicts
+    checkNameConflict
 };

@@ -311,14 +311,16 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
             return res.status(400).json({ success: false, message: '无效的请求参数。' });
         }
 
-        const conflicts = await data.checkMoveConflicts(itemIds, targetFolderId, userId);
+        const itemsToMove = await data.getItemsByIds(itemIds, userId);
+        const fileNamesToMove = itemsToMove.filter(i => i.type === 'file').map(f => f.name);
 
-        res.json({ success: true, conflicts });
+        const conflictingFiles = await data.checkNameConflict(fileNamesToMove, targetFolderId, userId);
+
+        res.json({ success: true, conflicts: conflictingFiles });
     } catch (error) {
         res.status(500).json({ success: false, message: '检查名称冲突时出错。' });
     }
 });
-
 
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
@@ -346,7 +348,7 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
 app.post('/api/folder', requireLogin, async (req, res) => {
     const { name, parentId } = req.body;
     const userId = req.session.userId;
-    if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少资料夾名称或父 ID。' });
+    if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少资料夹名称或父 ID。' });
     
     try {
         const existingFolder = await data.findFolderByName(name, parentId, userId);
@@ -358,7 +360,7 @@ app.post('/api/folder', requireLogin, async (req, res) => {
             res.json(result);
         }
     } catch (error) {
-         res.status(500).json({ success: false, message: error.message || '处理资料夾时发生错误。' });
+         res.status(500).json({ success: false, message: error.message || '处理资料夹时发生错误。' });
     }
 });
 
@@ -425,7 +427,7 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     
     const folderInfo = await data.getFolderPath(folderId, userId);
     if (!folderInfo || folderInfo.length === 0) {
-        return res.status(404).json({ success: false, message: '找不到指定的资料夾。' });
+        return res.status(404).json({ success: false, message: '找不到指定的资料夹。' });
     }
     if (folderInfo.length === 1 && folderInfo[0].id === folderId) {
         return res.status(400).json({ success: false, message: '无法删除根目录。' });
