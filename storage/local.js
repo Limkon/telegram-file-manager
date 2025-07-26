@@ -17,28 +17,25 @@ setup();
 async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
     const userDir = path.join(UPLOAD_DIR, String(userId));
     await fs.mkdir(userDir, { recursive: true });
-    
+
     const uniqueId = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
     const filePath = path.join(userDir, uniqueId);
-    
+
     await fs.writeFile(filePath, fileBuffer);
-    
+
     const messageId = Date.now() + Math.floor(Math.random() * 1000);
 
-    // --- *** 关键修正 开始 *** ---
-    // 接收来自 data.addFile 的回传结果，其中包含了新的 ID
     const dbResult = await data.addFile({
         message_id: messageId,
         fileName,
         mimetype,
-        file_id: filePath, 
+        size: fileBuffer.length,
+        file_id: filePath,
         thumb_file_id: null,
         date: Date.now(),
     }, folderId, userId, 'local');
-    
-    // 在回传物件中加入 fileId
+
     return { success: true, message: '档案已储存至本地。', fileId: dbResult.fileId };
-    // --- *** 关键修正 结束 *** ---
 }
 
 async function remove(files, userId) {
