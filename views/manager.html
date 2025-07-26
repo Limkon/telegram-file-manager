@@ -17,7 +17,6 @@
       <div class="header-buttons">
         <button id="view-switch-btn" class="upload-link-btn" title="切换视图"><i class="fas fa-list"></i></button>
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 管理共享</span></a>
-        <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立资料夹</span></button>
         <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上传文件</span></button>
         <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密码</span></button>
         <button id="logoutBtn" class="upload-link-btn"><i class="fas fa-sign-out-alt"></i><span class="button-text"> 登出</span></button>
@@ -31,7 +30,7 @@
             <input type="search" id="searchInput" placeholder="搜寻所有档案...">
         </form>
     </div>
-
+    
     <div id="dropZone">
         <div class="item-grid" id="itemGrid"></div>
         <div class="item-list-view" id="itemListView" style="display: none;">
@@ -52,7 +51,7 @@
     <span class="close-button">&times;</span>
     <div class="modal-content preview-modal-content" id="modalContent"></div>
   </div>
-
+  
   <div id="shareModal" class="modal">
     <div class="share-modal-content">
         <h3 id="shareModalTitle">分享文件</h3>
@@ -114,7 +113,7 @@
             <div class="upload-options">
                 <label for="fileInput" class="custom-upload-btn"><i class="fas fa-file"></i> 选择档案</label>
                 <input type="file" name="files" id="fileInput" multiple />
-
+                
                 <label for="folderInput" class="custom-upload-btn"><i class="fas fa-folder"></i> 选择资料夹</label>
                 <input type="file" id="folderInput" webkitdirectory directory />
             </div>
@@ -144,6 +143,7 @@
     <button id="selectAllBtn" title="全选/取消全选"><i class="fas fa-check-double"></i></button>
     <span id="selectionCount">已选择 0 个项目</span>
     <div class="actions">
+        <button id="createFolderBtn" title="建立资料夹"><i class="fas fa-folder-plus"></i></button>
         <button id="textEditBtn" title="新建文字档"><i class="fas fa-file-alt"></i></button>
         <button id="multiSelectBtn" title="多选模式"><i class="fas fa-tasks"></i></button>
         <button id="previewBtn" title="预览" disabled><i class="fas fa-eye"></i></button>
