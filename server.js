@@ -311,16 +311,14 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
             return res.status(400).json({ success: false, message: '无效的请求参数。' });
         }
 
-        const itemsToMove = await data.getItemsByIds(itemIds, userId);
-        const fileNamesToMove = itemsToMove.filter(i => i.type === 'file').map(f => f.name);
+        const conflicts = await data.checkMoveConflicts(itemIds, targetFolderId, userId);
 
-        const conflictingFiles = await data.checkNameConflict(fileNamesToMove, targetFolderId, userId);
-
-        res.json({ success: true, conflicts: conflictingFiles });
+        res.json({ success: true, conflicts });
     } catch (error) {
         res.status(500).json({ success: false, message: '检查名称冲突时出错。' });
     }
 });
+
 
 app.get('/api/search', requireLogin, async (req, res) => {
     try {
@@ -342,13 +340,13 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
         const contents = await data.getFolderContents(folderId, req.session.userId);
         const path = await data.getFolderPath(folderId, req.session.userId);
         res.json({ contents, path });
-    } catch (error) { res.status(500).json({ success: false, message: '读取资料夾内容失败。' }); }
+    } catch (error) { res.status(500).json({ success: false, message: '读取资料夹内容失败。' }); }
 });
 
 app.post('/api/folder', requireLogin, async (req, res) => {
     const { name, parentId } = req.body;
     const userId = req.session.userId;
-    if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少资料夹名称或父 ID。' });
+    if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少资料夾名称或父 ID。' });
     
     try {
         const existingFolder = await data.findFolderByName(name, parentId, userId);
@@ -423,7 +421,7 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
     const userId = req.session.userId;
     const storage = storageManager.getStorage();
-    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夾 ID。' });
+    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夹 ID。' });
     
     const folderInfo = await data.getFolderPath(folderId, userId);
     if (!folderInfo || folderInfo.length === 0) {
