@@ -12,7 +12,7 @@ try {
     }
 } catch (error) {
     console.error(`[致命错误] 无法创建资料夹: ${DATA_DIR}。错误: ${error.message}`);
-    process.exit(1); 
+    process.exit(1);
 }
 
 const db = new sqlite3.Database(DB_FILE, (err) => {
@@ -28,7 +28,7 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
                 password TEXT NOT NULL,
                 is_admin BOOLEAN NOT NULL DEFAULT 0
             )`);
-            
+
             db.run(`CREATE TABLE IF NOT EXISTS folders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -40,13 +40,14 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
                 UNIQUE(name, parent_id, user_id)
             )`);
-            
+
             db.run(`CREATE TABLE IF NOT EXISTS files (
                 message_id INTEGER PRIMARY KEY,
                 fileName TEXT NOT NULL,
                 mimetype TEXT,
                 file_id TEXT NOT NULL,
                 thumb_file_id TEXT,
+                size INTEGER,
                 date INTEGER NOT NULL,
                 share_token TEXT,
                 share_expires_at INTEGER,
