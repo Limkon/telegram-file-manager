@@ -200,6 +200,7 @@ function createFolder(name, parentId, userId) {
     });
 }
 
+// --- *** 新增部分 *** ---
 function findFolderByName(name, parentId, userId) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT id FROM folders WHERE name = ? AND parent_id = ? AND user_id = ?`;
