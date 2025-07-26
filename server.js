@@ -345,12 +345,33 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: '讀取資料夾內容失敗。' }); }
 });
 
+// --- *** 關鍵修正 開始 *** ---
 app.post('/api/folder', requireLogin, async (req, res) => {
     const { name, parentId } = req.body;
+    const userId = req.session.userId;
     if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少資料夾名稱或父 ID。' });
-    const result = await data.createFolder(name, parentId, req.session.userId);
-    res.json(result);
+    
+    try {
+        const result = await data.createFolder(name, parentId, userId);
+        res.json(result);
+    } catch (error) {
+        if (error && error.message.includes('UNIQUE')) {
+            try {
+                const existingFolder = await data.findFolderByName(name, parentId, userId);
+                if (existingFolder) {
+                    res.json({ success: true, id: existingFolder.id, existed: true });
+                } else {
+                    res.status(500).json({ success: false, message: '檢查現有資料夾時出錯。' });
+                }
+            } catch (findError) {
+                res.status(500).json({ success: false, message: '尋找現有資料夾失敗。' });
+            }
+        } else {
+             res.status(500).json({ success: false, message: error.message || '建立資料夾失敗。' });
+        }
+    }
 });
+// --- *** 關鍵修正 結束 *** ---
 
 app.get('/api/folders', requireLogin, async (req, res) => {
     const folders = await data.getAllFolders(req.session.userId);
@@ -642,7 +663,6 @@ app.get('/share/view/folder/:token', async (req, res) => {
     }
 });
 
-// --- *** 關鍵修正：將此路由放在更通用的路由之前 *** ---
 app.get('/share/download/file/:token', async (req, res) => {
     try {
         const token = req.params.token;
