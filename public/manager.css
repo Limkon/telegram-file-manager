@@ -41,10 +41,8 @@ body {
   border: none;
   cursor: pointer;
   font-size: 16px;
-  /* --- *** 关键修正 开始 *** --- */
-  height: 40px; /* 设定一个固定的高度 */
-  box-sizing: border-box; /* 确保 padding 和 border 不会增加额外的高度 */
-  /* --- *** 关键修正 结束 *** --- */
+  height: 40px; 
+  box-sizing: border-box; 
 }
 .upload-link-btn:hover {
   background-color: #0069d9;
@@ -251,6 +249,8 @@ body {
 .action-bar .actions button:not(:disabled):hover { background: #5a6268; }
 .action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
 .action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
+.action-bar .actions #createFolderBtn { background-color: #17a2b8; }
+.action-bar .actions #createFolderBtn:not(:disabled):hover { background-color: #138496; }
 
 /* 模态框 */
 .modal {
@@ -296,7 +296,6 @@ body {
 #confirmMoveBtn, #cancelMoveBtn { width: 48%; padding: 10px; margin-top: 15px; border-radius: 5px; border: none; cursor: pointer; }
 #confirmMoveBtn { background-color: var(--primary-color); color: white; }
 #cancelMoveBtn { background-color: #6c757d; color: white; }
-.create-folder-btn { background-color: #17a2b8; }
 .search-form { position: relative; flex-grow: 1; max-width: 400px; }
 #searchInput { width: 100%; padding: 10px 15px 10px 40px; border-radius: 20px; border: 1px solid #ccc; box-sizing: border-box;}
 .search-form .fa-search { position: absolute; top: 13px; left: 15px; color: #999; }
