@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理後台</title>
+    <title>管理后台</title>
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/manager.css">
     <style>
@@ -51,35 +51,35 @@
 <body>
     <div class="container">
         <header class="main-header">
-            <h1>管理後台</h1>
+            <h1>管理后台</h1>
             <a href="/" class="upload-link-btn"><i class="fas fa-arrow-left"></i> 返回文件管理器</a>
         </header>
 
         <div class="setting-card">
-            <h2>儲存設定</h2>
-            <p>目前儲存模式: <b id="current-mode">加載中...</b></p>
-            <p>警告：切換儲存模式不會遷移現有檔案。切換後，舊模式下的檔案將無法在管理器中存取。</p>
+            <h2>储存设定</h2>
+            <p>目前储存模式: <b id="current-mode">加载中...</b></p>
+            <p>警告：切换储存模式不会迁移现有档案。切换后，旧模式下的档案将无法在管理器中存取。</p>
             <hr>
-            <label for="storage-select">選擇新的儲存模式：</label>
+            <label for="storage-select">选择新的储存模式：</label>
             <select id="storage-select">
                 <option value="telegram">Telegram</option>
                 <option value="local">本地伺服器</option>
             </select>
-            <button id="save-btn">儲存設定</button>
+            <button id="save-btn">储存设定</button>
             <p id="save-status" style="color: green;"></p>
         </div>
 
         <div class="setting-card">
             <h2>使用者管理</h2>
             <form id="add-user-form">
-                <input type="text" id="new-username" placeholder="新用戶名" required>
-                <input type="password" id="new-password" placeholder="新密碼 (至少4位)" required>
+                <input type="text" id="new-username" placeholder="新用户名" required>
+                <input type="password" id="new-password" placeholder="新密码 (至少4位)" required>
                 <button type="submit">新增使用者</button>
             </form>
             <table class="user-table">
                 <thead>
                     <tr>
-                        <th>使用者名稱</th>
+                        <th>使用者名称</th>
                         <th>操作</th>
                     </tr>
                 </thead>
@@ -96,12 +96,12 @@
             const saveBtn = document.getElementById('save-btn');
             const saveStatus = document.getElementById('save-status');
 
-            // --- *** 新增部分 開始 *** ---
+            // --- *** 新增部分 开始 *** ---
             const addUserForm = document.getElementById('add-user-form');
             const newUsernameInput = document.getElementById('new-username');
             const newPasswordInput = document.getElementById('new-password');
             const userTableBody = document.getElementById('user-table-body');
-            // --- *** 新增部分 結束 *** ---
+            // --- *** 新增部分 结束 *** ---
 
             async function loadCurrentMode() {
                 try {
@@ -109,13 +109,13 @@
                     currentModeEl.textContent = res.data.mode === 'local' ? '本地伺服器' : 'Telegram';
                     storageSelect.value = res.data.mode;
                 } catch (error) {
-                    currentModeEl.textContent = '讀取失敗';
+                    currentModeEl.textContent = '读取失败';
                 }
             }
 
             saveBtn.addEventListener('click', async () => {
                 const newMode = storageSelect.value;
-                if (!confirm(`確定要將儲存模式切換為 "${newMode}" 嗎？`)) {
+                if (!confirm(`确定要将储存模式切换为 "${newMode}" 吗？`)) {
                     return;
                 }
                 try {
@@ -125,11 +125,11 @@
                         loadCurrentMode();
                     }
                 } catch (error) {
-                    saveStatus.textContent = '儲存失敗！';
+                    saveStatus.textContent = '储存失败！';
                 }
             });
             
-            // --- *** 新增部分 開始 *** ---
+            // --- *** 新增部分 开始 *** ---
             async function loadUsers() {
                 try {
                     const res = await axios.get('/api/admin/users');
@@ -139,15 +139,15 @@
                             <tr>
                                 <td>${user.username}</td>
                                 <td class="actions">
-                                    <button class="change-pass-btn" data-userid="${user.id}" data-username="${user.username}">改密碼</button>
-                                    <button class="delete-user-btn" data-userid="${user.id}" data-username="${user.username}">刪除</button>
+                                    <button class="change-pass-btn" data-userid="${user.id}" data-username="${user.username}">改密码</button>
+                                    <button class="delete-user-btn" data-userid="${user.id}" data-username="${user.username}">删除</button>
                                 </td>
                             </tr>
                         `;
                         userTableBody.innerHTML += row;
                     });
                 } catch (error) {
-                    userTableBody.innerHTML = '<tr><td colspan="2">加載使用者失敗</td></tr>';
+                    userTableBody.innerHTML = '<tr><td colspan="2">加载使用者失败</td></tr>';
                 }
             }
 
@@ -164,7 +164,7 @@
                     alert('使用者新增成功！');
                     loadUsers();
                 } catch (error) {
-                    alert('新增失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                    alert('新增失败：' + (error.response?.data?.message || '伺服器错误'));
                 }
             });
 
@@ -174,34 +174,34 @@
                 const username = target.dataset.username;
 
                 if (target.classList.contains('change-pass-btn')) {
-                    const newPassword = prompt(`請為使用者 "${username}" 輸入新密碼：`);
+                    const newPassword = prompt(`请为使用者 "${username}" 输入新密码：`);
                     if (newPassword && newPassword.length >= 4) {
                         try {
                             await axios.post('/api/admin/change-password', { userId, newPassword });
-                            alert(`使用者 "${username}" 的密碼已更新。`);
+                            alert(`使用者 "${username}" 的密码已更新。`);
                         } catch (error) {
-                            alert('密碼更新失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                            alert('密码更新失败：' + (error.response?.data?.message || '伺服器错误'));
                         }
                     } else if (newPassword) {
-                        alert('密碼長度至少需要 4 個字元。');
+                        alert('密码长度至少需要 4 个字元。');
                     }
                 }
 
                 if (target.classList.contains('delete-user-btn')) {
-                    if (confirm(`確定要刪除使用者 "${username}" 嗎？\n此操作將會刪除該使用者的所有檔案和資料夾，且無法復原！`)) {
+                    if (confirm(`确定要删除使用者 "${username}" 吗？\n此操作将会删除该使用者的所有档案和资料夹，且无法复原！`)) {
                         try {
                             await axios.post('/api/admin/delete-user', { userId });
-                            alert(`使用者 "${username}" 已被刪除。`);
+                            alert(`使用者 "${username}" 已被删除。`);
                             loadUsers();
                         } catch (error) {
-                             alert('刪除失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                             alert('删除失败：' + (error.response?.data?.message || '伺服器错误'));
                         }
                     }
                 }
             });
 
             loadUsers();
-            // --- *** 新增部分 結束 *** ---
+            // --- *** 新增部分 结束 *** ---
 
             loadCurrentMode();
         });

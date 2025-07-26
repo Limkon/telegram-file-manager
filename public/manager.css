@@ -24,7 +24,7 @@ body {
   margin-bottom: 20px;
   flex-wrap: wrap;
 }
-/* --- 關鍵修正 1：移除標題底線 --- */
+/* --- 关键修正 1：移除标题底线 --- */
 .main-header a, #homeLink {
   text-decoration: none;
 }
@@ -47,7 +47,7 @@ body {
   background-color: #0069d9;
 }
 
-/* 麵包屑 */
+/* 面包屑 */
 .breadcrumb {
     display: flex;
     align-items: center;
@@ -66,7 +66,7 @@ body {
 .breadcrumb span { color: #6c757d; font-weight: normal; }
 .breadcrumb .separator { margin: 0 10px; color: #6c757d; }
 
-/* 項目網格與拖拽區域 */
+/* 项目网格与拖拽区域 */
 #dropZone {
     position: relative;
     border: 2px dashed #ccc;
@@ -105,9 +105,9 @@ body {
     gap: 20px;
     padding-bottom: 100px;
 }
-/* --- 關鍵修正 2：在網格為空時顯示提示文字 --- */
+/* --- 关键修正 2：在网格为空时显示提示文字 --- */
 .item-grid:empty::after {
-    content: '將文件拖到此處以上傳';
+    content: '将文件拖到此处以上传';
     position: absolute;
     top: 50%;
     left: 50%;
@@ -167,7 +167,7 @@ body {
     color: var(--text-color);
 }
 
-/* 浮動操作欄 */
+/* 浮动操作栏 */
 .action-bar {
   position: fixed;
   bottom: 20px;
@@ -196,8 +196,8 @@ body {
 .action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
 .action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
 
-/* 模態框 */
-/* --- *** 關鍵修正 3：修改彈窗背景為淺色 --- */
+/* 模态框 */
+/* --- *** 关键修正 3：修改弹窗背景为浅色 --- */
 .modal { 
     display: none; 
     position: fixed; 
@@ -272,7 +272,7 @@ body {
 #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
 #conflictOptions button { width: auto; padding: 8px 16px; }
 
-/* --- 手機端優化 --- */
+/* --- 手机端优化 --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;

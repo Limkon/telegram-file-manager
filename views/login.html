@@ -89,24 +89,24 @@
 </head>
 <body>
   <div class="login-container">
-    <h2>登入網絡硬盤</h2>
+    <h2>登入网络硬盘</h2>
     <form id="loginForm" action="/login" method="post">
       <div class="form-group">
-        <label for="username">用戶名</label>
-        <input id="username" name="username" placeholder="請輸入用戶名" required>
+        <label for="username">用户名</label>
+        <input id="username" name="username" placeholder="请输入用户名" required>
       </div>
       <div class="form-group">
-        <label for="password">密碼</label>
-        <input id="password" name="password" type="password" placeholder="請輸入密碼" required>
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" placeholder="请输入密码" required>
       </div>
       <button type="submit">登入</button>
     </form>
     <div class="register-link">
-        還沒有帳號？ <a href="/register">點此註冊</a>
+        还没有帐号？ <a href="/register">点此注册</a>
     </div>
   </div>
 
-  <!-- --- *** 關鍵修正 開始 *** --- -->
+  <!-- --- *** 关键修正 开始 *** --- -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('loginForm');
@@ -115,7 +115,7 @@
 
       const handleEnter = (event) => {
         if (event.key === 'Enter') {
-          event.preventDefault(); // 防止預設的換行行為
+          event.preventDefault(); // 防止预设的换行行为
           form.submit();
         }
       };
@@ -124,6 +124,6 @@
       passwordInput.addEventListener('keydown', handleEnter);
     });
   </script>
-  <!-- --- *** 關鍵修正 結束 *** --- -->
+  <!-- --- *** 关键修正 结束 *** --- -->
 </body>
 </html>

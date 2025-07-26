@@ -9,7 +9,7 @@ async function setup() {
     try {
         await fs.mkdir(UPLOAD_DIR, { recursive: true });
     } catch (e) {
-        console.error("無法建立上傳目錄:", e);
+        console.error("无法建立上传目录:", e);
     }
 }
 setup();
@@ -25,8 +25,8 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
     
     const messageId = Date.now() + Math.floor(Math.random() * 1000);
 
-    // --- *** 關鍵修正 開始 *** ---
-    // 接收來自 data.addFile 的回傳結果，其中包含了新的 ID
+    // --- *** 关键修正 开始 *** ---
+    // 接收来自 data.addFile 的回传结果，其中包含了新的 ID
     const dbResult = await data.addFile({
         message_id: messageId,
         fileName,
@@ -36,9 +36,9 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
         date: Date.now(),
     }, folderId, userId, 'local');
     
-    // 在回傳物件中加入 fileId
-    return { success: true, message: '檔案已儲存至本地。', fileId: dbResult.fileId };
-    // --- *** 關鍵修正 結束 *** ---
+    // 在回传物件中加入 fileId
+    return { success: true, message: '档案已储存至本地。', fileId: dbResult.fileId };
+    // --- *** 关键修正 结束 *** ---
 }
 
 async function remove(files, userId) {
@@ -49,7 +49,7 @@ async function remove(files, userId) {
         try {
             await fs.unlink(filePath);
         } catch (e) {
-            console.warn(`刪除本地檔案失敗: ${filePath}`, e.message);
+            console.warn(`删除本地档案失败: ${filePath}`, e.message);
         }
     }
     await data.deleteFilesByIds(messageIds, userId);

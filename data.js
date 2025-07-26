@@ -62,7 +62,7 @@ function deleteUser(userId) {
 }
 
 
-// --- 檔案搜尋 ---
+// --- 档案搜寻 ---
 function searchFiles(query, userId) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT *, message_id as id, fileName as name, 'file' as type 
@@ -77,7 +77,7 @@ function searchFiles(query, userId) {
     });
 }
 
-// --- 資料夾與檔案操作 ---
+// --- 资料夹与档案操作 ---
 function getItemsByIds(itemIds, userId) {
     return new Promise((resolve, reject) => {
         if (!itemIds || itemIds.length === 0) return resolve([]);
@@ -192,7 +192,7 @@ function createFolder(name, parentId, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [name, parentId, userId], function (err) {
             if (err) {
-                if (err.message.includes('UNIQUE')) return reject(new Error('同目錄下已存在同名資料夾。'));
+                if (err.message.includes('UNIQUE')) return reject(new Error('同目录下已存在同名资料夹。'));
                 return reject(err);
             }
             resolve({ success: true, id: this.lastID });
@@ -357,7 +357,7 @@ function renameFolder(folderId, newFolderName, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [newFolderName, folderId, userId], function(err) {
             if (err) reject(err);
-            else if (this.changes === 0) resolve({ success: false, message: '資料夾未找到。' });
+            else if (this.changes === 0) resolve({ success: false, message: '资料夹未找到。' });
             else resolve({ success: true });
         });
     });
@@ -388,7 +388,7 @@ function createShareLink(itemId, itemType, expiresIn, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [token, expiresAt, itemId, userId], function(err) {
             if (err) reject(err);
-            else if (this.changes === 0) resolve({ success: false, message: '項目未找到。' });
+            else if (this.changes === 0) resolve({ success: false, message: '项目未找到。' });
             else resolve({ success: true, token });
         });
     });
@@ -432,7 +432,7 @@ function cancelShare(itemId, itemType, userId) {
     return new Promise((resolve, reject) => {
         db.run(sql, [itemId, userId], function(err) {
             if (err) reject(err);
-            else if (this.changes === 0) resolve({ success: false, message: '項目未找到或無需取消' });
+            else if (this.changes === 0) resolve({ success: false, message: '项目未找到或无需取消' });
             else resolve({ success: true });
         });
     });

@@ -13,9 +13,9 @@ function readConfig() {
             return JSON.parse(rawData);
         }
     } catch (error) {
-        console.error("讀取設定檔失敗:", error);
+        console.error("读取设定档失败:", error);
     }
-    return { storageMode: 'telegram' }; // 預設值
+    return { storageMode: 'telegram' }; // 预设值
 }
 
 function writeConfig(config) {
@@ -23,7 +23,7 @@ function writeConfig(config) {
         fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
         return true;
     } catch (error) {
-        console.error("寫入設定檔失敗:", error);
+        console.error("写入设定档失败:", error);
         return false;
     }
 }

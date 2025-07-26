@@ -28,7 +28,7 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId, caption 
               thumb_file_id: fileData.thumb ? fileData.thumb.file_id : null,
               date: Date.now(),
             }, folderId, userId, 'telegram');
-            // --- *** 關鍵修正：回傳新的 message_id *** ---
+            // --- *** 关键修正：回传新的 message_id *** ---
             return { success: true, data: res.data, fileId: result.message_id };
         }
     }

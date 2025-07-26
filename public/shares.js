@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '';
 
             if (shares.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前沒有任何分享中的項目。</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">目前没有任何分享中的项目。</td></tr>';
                 return;
             }
 
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>
                         <div class="share-link">
                             <input type="text" value="${item.share_url}" readonly>
-                            <button class="copy-btn" title="複製連結"><i class="fas fa-copy"></i></button>
+                            <button class="copy-btn" title="复制连结"><i class="fas fa-copy"></i></button>
                         </div>
                     </td>
                     <td>${expires}</td>
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            loadingMessage.textContent = '加載失敗，請稍後重試。';
+            loadingMessage.textContent = '加载失败，请稍后重试。';
         }
     };
 
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (cancelBtn) {
-            if (!confirm('確定要取消這個項目的分享嗎？')) return;
+            if (!confirm('确定要取消这个项目的分享吗？')) return;
             
             const row = cancelBtn.closest('tr');
             const itemId = row.dataset.itemId;
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await axios.post('/api/cancel-share', { itemId, itemType });
                 row.remove();
             } catch (error) {
-                alert('取消分享失敗，請重試。');
+                alert('取消分享失败，请重试。');
             }
         }
     });

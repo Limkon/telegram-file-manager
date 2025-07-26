@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文字編輯器</title>
+    <title>文字编辑器</title>
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <style>
         :root {
@@ -92,10 +92,10 @@
 </head>
 <body>
     <div class="editor-header">
-        <input type="text" id="fileNameInput" placeholder="請輸入檔名 (可省略 .txt)">
+        <input type="text" id="fileNameInput" placeholder="请输入档名 (可省略 .txt)">
         <div class="editor-actions">
             <span id="saveStatus"></span>
-            <button id="saveBtn">儲存</button>
+            <button id="saveBtn">储存</button>
             <button id="backBtn">返回</button>
         </div>
     </div>
@@ -126,7 +126,7 @@
                         fileNameInput.value = fileInfoRes.data.fileName;
                         editor.value = fileContentRes.data;
                     } catch (error) {
-                        alert('載入檔案失敗！');
+                        alert('载入档案失败！');
                         window.close();
                     }
                 }
@@ -136,7 +136,7 @@
                 let fileName = fileNameInput.value.trim();
                 
                 if (!fileName) {
-                    alert('檔名不能為空！');
+                    alert('档名不能为空！');
                     return;
                 }
 
@@ -146,7 +146,7 @@
 
                 const content = editor.value;
                 saveBtn.disabled = true;
-                saveBtn.textContent = '儲存中...';
+                saveBtn.textContent = '储存中...';
                 saveStatus.textContent = '';
 
                 try {
@@ -162,31 +162,31 @@
                         window.opener.postMessage('refresh-files', '*');
                     }
                     
-                    saveStatus.textContent = '✓ 已儲存';
+                    saveStatus.textContent = '✓ 已储存';
                     setTimeout(() => {
                         saveStatus.textContent = '';
                     }, 2000);
 
-                    // --- *** 關鍵修正 開始 *** ---
-                    // 無論是新建還是編輯，只要儲存成功，就用伺服器回傳的最新 fileId 更新本地狀態
+                    // --- *** 关键修正 开始 *** ---
+                    // 无论是新建还是编辑，只要储存成功，就用伺服器回传的最新 fileId 更新本地状态
                     if (response.data.success && response.data.fileId) {
                         fileId = response.data.fileId;
-                        mode = 'edit'; // 儲存後一律變為編輯模式
+                        mode = 'edit'; // 储存后一律变为编辑模式
                         
-                        // 更新瀏覽器地址欄的 URL，以反映最新的 fileId
+                        // 更新浏览器地址栏的 URL，以反映最新的 fileId
                         const newUrl = `${window.location.pathname}?mode=edit&fileId=${fileId}`;
                         history.pushState({}, '', newUrl);
 
-                        // 同步更新輸入框中的檔名，以防檔名被自動加上 .txt
+                        // 同步更新输入框中的档名，以防档名被自动加上 .txt
                         fileNameInput.value = fileName;
                     }
-                    // --- *** 關鍵修正 結束 *** ---
+                    // --- *** 关键修正 结束 *** ---
 
                 } catch (error) {
-                    alert('儲存失敗：' + (error.response?.data?.message || '伺服器錯誤'));
+                    alert('储存失败：' + (error.response?.data?.message || '伺服器错误'));
                 } finally {
                     saveBtn.disabled = false;
-                    saveBtn.textContent = '儲存';
+                    saveBtn.textContent = '储存';
                 }
             });
 

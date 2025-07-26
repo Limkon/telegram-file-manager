@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>網絡硬盤</title>
+  <title>网络硬盘</title>
   <script src="/vendor/axios/axios.min.js"></script>
   <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="/manager.css">
@@ -16,9 +16,9 @@
       </a>
       <div class="header-buttons">
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 管理共享</span></a>
-        <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立資料夾</span></button>
-        <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上傳文件</span></button>
-        <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密碼</span></button>
+        <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立资料夹</span></button>
+        <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上传文件</span></button>
+        <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密码</span></button>
         <button id="logoutBtn" class="upload-link-btn"><i class="fas fa-sign-out-alt"></i><span class="button-text"> 登出</span></button>
       </div>
     </header>
@@ -27,14 +27,14 @@
         <nav class="breadcrumb" id="breadcrumb" style="margin-bottom: 0; flex-grow: 1;"></nav>
         <form class="search-form" id="searchForm">
             <i class="fas fa-search"></i>
-            <input type="search" id="searchInput" placeholder="搜尋所有檔案...">
+            <input type="search" id="searchInput" placeholder="搜寻所有档案...">
         </form>
     </div>
     
     <div id="dropZone">
         <div class="item-grid" id="itemGrid"></div>
         <div id="dropZoneOverlay">
-            <span>將文件拖到此處以上傳</span>
+            <span>将文件拖到此处以上传</span>
         </div>
     </div>
   </div>
@@ -48,50 +48,50 @@
     <div class="share-modal-content">
         <h3 id="shareModalTitle">分享文件</h3>
         <div id="shareOptions">
-            <p>請選擇分享鏈接的有效期：</p>
+            <p>请选择分享链接的有效期：</p>
             <select id="expiresInSelect">
-                <option value="1h">1 小時</option>
-                <option value="3h">3 小時</option>
-                <option value="5h">5 小時</option>
-                <option value="7h">7 小時</option>
-                <option value="24h" selected>24 小時</option>
+                <option value="1h">1 小时</option>
+                <option value="3h">3 小时</option>
+                <option value="5h">5 小时</option>
+                <option value="7h">7 小时</option>
+                <option value="24h" selected>24 小时</option>
                 <option value="7d">7 天</option>
                 <option value="0">永久有效</option>
             </select>
-            <button id="confirmShareBtn" class="confirm-share">生成分享鏈接</button>
+            <button id="confirmShareBtn" class="confirm-share">生成分享链接</button>
             <button id="cancelShareBtn" class="cancel-share">取消</button>
         </div>
         <div id="shareResult" style="display: none;">
-            <p>分享鏈接已創建！</p>
+            <p>分享链接已创建！</p>
             <div id="shareLinkContainer" class="share-link-container"></div>
-            <button id="copyLinkBtn">複製鏈接</button>
-            <button id="closeShareModalBtn" class="cancel-share">關閉</button>
+            <button id="copyLinkBtn">复制链接</button>
+            <button id="closeShareModalBtn" class="cancel-share">关闭</button>
         </div>
     </div>
   </div>
 
   <div id="moveModal" class="modal">
     <div class="move-modal-content">
-        <h3>移動到...</h3>
-        <p>請選擇目標資料夾：</p>
+        <h3>移动到...</h3>
+        <p>请选择目标资料夹：</p>
         <div id="folderTree"></div>
-        <button id="confirmMoveBtn" disabled>確定移動</button>
+        <button id="confirmMoveBtn" disabled>确定移动</button>
         <button id="cancelMoveBtn">取消</button>
     </div>
   </div>
 
   <div id="conflictModal" class="modal">
     <div class="move-modal-content">
-        <h3>檔案衝突</h3>
-        <p>目標資料夾中已存在同名檔案：</p>
+        <h3>档案冲突</h3>
+        <p>目标资料夹中已存在同名档案：</p>
         <p><b id="conflictFileName"></b></p>
-        <p>您要如何處理？</p>
+        <p>您要如何处理？</p>
         <div id="conflictOptions">
-            <button data-action="overwrite">覆蓋</button>
-            <button data-action="overwrite_all">全部覆蓋</button>
+            <button data-action="overwrite">覆盖</button>
+            <button data-action="overwrite_all">全部覆盖</button>
             <button data-action="skip">取消</button>
             <button data-action="skip_all">全部取消</button>
-            <button data-action="abort" style="background-color: #dc3545;">放棄</button>
+            <button data-action="abort" style="background-color: #dc3545;">放弃</button>
         </div>
     </div>
   </div>
@@ -99,23 +99,23 @@
   <div id="uploadModal" class="modal">
     <div class="upload-modal-content">
         <span class="close-button" id="closeUploadModalBtn">&times;</span>
-        <h2>文件上傳</h2>
+        <h2>文件上传</h2>
         <div id="uploadNotificationArea"></div>
         <form id="uploadForm">
             <div class="upload-options">
-                <label for="fileInput" class="custom-upload-btn"><i class="fas fa-file"></i> 選擇檔案</label>
+                <label for="fileInput" class="custom-upload-btn"><i class="fas fa-file"></i> 选择档案</label>
                 <input type="file" name="files" id="fileInput" multiple />
                 
-                <label for="folderInput" class="custom-upload-btn"><i class="fas fa-folder"></i> 選擇資料夾</label>
+                <label for="folderInput" class="custom-upload-btn"><i class="fas fa-folder"></i> 选择资料夹</label>
                 <input type="file" id="folderInput" webkitdirectory directory />
             </div>
 
             <ul id="file-selection-list"></ul>
-            <label for="folderSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">上傳到資料夾：</label>
+            <label for="folderSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">上传到资料夹：</label>
             <select name="folderId" id="folderSelect">
             </select>
-            <input type="text" name="caption" id="uploadCaption" placeholder="可選的說明文字(對所有文件生效)" />
-            <button type="submit" id="uploadSubmitBtn">上傳</button>
+            <input type="text" name="caption" id="uploadCaption" placeholder="可选的说明文字(对所有文件生效)" />
+            <button type="submit" id="uploadSubmitBtn">上传</button>
         </form>
         <div class="progress-area" id="progressArea">
             <div class="progress-bar-container">
@@ -132,17 +132,17 @@
   </div>
 
   <div class="action-bar" id="actionBar">
-    <button id="selectAllBtn" title="全選/取消全選"><i class="fas fa-check-double"></i></button>
-    <span id="selectionCount">已選擇 0 個項目</span>
+    <button id="selectAllBtn" title="全选/取消全选"><i class="fas fa-check-double"></i></button>
+    <span id="selectionCount">已选择 0 个项目</span>
     <div class="actions">
-        <button id="textEditBtn" title="新建文字檔"><i class="fas fa-file-alt"></i></button>
-        <button id="multiSelectBtn" title="多選模式"><i class="fas fa-tasks"></i></button>
-        <button id="previewBtn" title="預覽" disabled><i class="fas fa-eye"></i></button>
-        <button id="moveBtn" title="移動" disabled><i class="fas fa-people-arrows"></i></button>
+        <button id="textEditBtn" title="新建文字档"><i class="fas fa-file-alt"></i></button>
+        <button id="multiSelectBtn" title="多选模式"><i class="fas fa-tasks"></i></button>
+        <button id="previewBtn" title="预览" disabled><i class="fas fa-eye"></i></button>
+        <button id="moveBtn" title="移动" disabled><i class="fas fa-people-arrows"></i></button>
         <button id="shareBtn" title="分享" disabled><i class="fas fa-share-alt"></i></button>
         <button id="renameBtn" title="重命名" disabled><i class="fas fa-i-cursor"></i></button>
-        <button id="downloadBtn" title="下載" disabled><i class="fas fa-download"></i></button>
-        <button id="deleteBtn" title="刪除" disabled><i class="fas fa-trash-alt"></i></button>
+        <button id="downloadBtn" title="下载" disabled><i class="fas fa-download"></i></button>
+        <button id="deleteBtn" title="删除" disabled><i class="fas fa-trash-alt"></i></button>
     </div>
   </div>
 

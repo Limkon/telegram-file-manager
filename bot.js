@@ -19,7 +19,7 @@ async function sendFile(fileBuffer, fileName, mimetype, caption = '', folderId =
         const fileData = result.document || result.video || result.audio || result.photo;
 
         if (fileData && fileData.file_id) {
-            // 這是確保新檔案能擷取到 thumb_file_id 的關鍵
+            // 这是确保新档案能撷取到 thumb_file_id 的关键
             await data.addFile({
               fileName,
               mimetype: fileData.mime_type || mimetype,
