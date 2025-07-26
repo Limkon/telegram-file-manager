@@ -303,6 +303,7 @@ app.post('/api/check-existence', requireLogin, async (req, res) => {
     res.json({ success: true, files: existenceChecks });
 });
 
+// --- *** 完整替换 *** ---
 app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId } = req.body;
@@ -313,11 +314,14 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
 
         const itemsToMove = await data.getItemsByIds(itemIds, userId);
         const fileNamesToMove = itemsToMove.filter(i => i.type === 'file').map(f => f.name);
+        const folderNamesToMove = itemsToMove.filter(i => i.type === 'folder').map(f => f.name);
 
-        const conflictingFiles = await data.checkNameConflict(fileNamesToMove, targetFolderId, userId);
+        const fileConflicts = await data.checkNameConflict(fileNamesToMove, targetFolderId, userId);
+        const folderConflicts = await data.checkFolderConflict(folderNamesToMove, targetFolderId, userId);
 
-        res.json({ success: true, conflicts: conflictingFiles });
+        res.json({ success: true, fileConflicts, folderConflicts });
     } catch (error) {
+        console.error("Conflict check error:", error);
         res.status(500).json({ success: false, message: '检查名称冲突时出错。' });
     }
 });
@@ -369,38 +373,10 @@ app.get('/api/folders', requireLogin, async (req, res) => {
     res.json(folders);
 });
 
-async function moveItem(itemId, itemType, targetFolderId, userId, overwriteList) {
-    if (itemType === 'folder') {
-        const folderToMove = (await data.getItemsByIds([itemId], userId))[0];
-        const existingFolder = await data.findFolderByName(folderToMove.name, targetFolderId, userId);
-
-        if (existingFolder) {
-            const children = await data.getChildrenOfFolder(itemId, userId);
-            for (const child of children) {
-                await moveItem(child.id, child.type, existingFolder.id, userId, overwriteList);
-            }
-            await data.deleteSingleFolder(itemId, userId); 
-        } else {
-            await data.moveItems([], [itemId], targetFolderId, userId);
-        }
-    } else { // file
-        const fileToMove = (await data.getFilesByIds([itemId], userId))[0];
-        const conflict = await data.findFileInFolder(fileToMove.fileName, targetFolderId, userId);
-        
-        if (conflict && overwriteList.includes(fileToMove.fileName)) {
-            const storage = storageManager.getStorage();
-            const filesToDelete = await data.getFilesByIds([conflict.message_id], userId);
-            await storage.remove(filesToDelete, userId);
-            await data.moveItems([itemId], [], targetFolderId, userId);
-        } else if (!conflict) {
-            await data.moveItems([itemId], [], targetFolderId, userId);
-        }
-    }
-}
-
+// --- *** 完整替换 *** ---
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
-        const { itemIds, targetFolderId, overwriteList = [] } = req.body;
+        const { itemIds, targetFolderId, overwriteList = [], mergeList = [] } = req.body;
         const userId = req.session.userId;
         if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) {
             return res.status(400).json({ success: false, message: '无效的请求参数。' });
@@ -409,15 +385,17 @@ app.post('/api/move', requireLogin, async (req, res) => {
         const items = await data.getItemsByIds(itemIds, userId);
         
         for (const item of items) {
-            await moveItem(item.id, item.type, targetFolderId, userId, overwriteList);
+            // 修正后的 moveItem 函式现在会处理所有逻辑
+            await data.moveItem(item.id, item.type, targetFolderId, userId, { overwriteList, mergeList });
         }
         
         res.json({ success: true, message: "移动成功" });
     } catch (error) { 
         console.error("Move error:", error);
-        res.status(500).json({ success: false, message: '移动失败' }); 
+        res.status(500).json({ success: false, message: '移动失败：' + error.message }); 
     }
 });
+
 
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
