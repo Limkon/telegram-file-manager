@@ -274,6 +274,7 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
     }
 });
 
+// --- *** 新增部分 開始 *** ---
 app.post('/api/create-folder-structure', requireLogin, async (req, res) => {
     const { paths, parentId } = req.body;
     const userId = req.session.userId;
@@ -313,6 +314,7 @@ app.post('/api/create-folder-structure', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '建立目錄結構失敗' });
     }
 });
+// --- *** 新增部分 結束 *** ---
 
 app.get('/api/file-info/:id', requireLogin, async (req, res) => {
     try {
