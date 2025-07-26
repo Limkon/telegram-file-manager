@@ -661,6 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert('刪除失敗，請重試。'); }
         });
     }
+    
+    // --- *** 關鍵修正 開始 *** ---
     if (moveBtn) {
         moveBtn.addEventListener('click', async () => {
             if (selectedItems.size === 0) return;
@@ -679,17 +681,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                const selectedFolderIds = new Set();
+                const disabledFolderIds = new Set();
                 selectedItems.forEach((item, id) => {
                     if (item.type === 'folder') {
-                        selectedFolderIds.add(parseInt(id));
+                        const folderId = parseInt(id);
+                        disabledFolderIds.add(folderId);
+                        // 遞迴尋找所有子資料夾並禁用
+                        const findDescendants = (parentId) => {
+                            const parentNode = folderMap.get(parentId);
+                            if (parentNode && parentNode.children) {
+                                parentNode.children.forEach(child => {
+                                    disabledFolderIds.add(child.id);
+                                    findDescendants(child.id);
+                                });
+                            }
+                        };
+                        findDescendants(folderId);
                     }
                 });
 
-                const buildTree = (node, prefix = '', disabled = false) => {
-                    const isSelected = selectedFolderIds.has(node.id);
-                    const isDisabled = disabled || isSelected;
-
+                const buildTree = (node, prefix = '') => {
+                    // 禁止移動到目前所在的資料夾
+                    const isDisabled = disabledFolderIds.has(node.id) || node.id === currentFolderId;
+                    
                     const item = document.createElement('div');
                     item.className = 'folder-item';
                     item.dataset.folderId = node.id;
@@ -701,10 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     folderTree.appendChild(item);
-                    node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　', isDisabled));
+                    node.children.sort((a,b) => a.name.localeCompare(b.name)).forEach(child => buildTree(child, prefix + '　'));
                 };
-                
-                // --- *** 關鍵修正：使用匿名函式包裝 buildTree 呼叫 *** ---
                 tree.sort((a,b) => a.name.localeCompare(b.name)).forEach(node => buildTree(node));
 
                 moveModal.style.display = 'flex';
@@ -763,6 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    // --- *** 關鍵修正 結束 *** ---
+
     if (shareBtn && shareModal) {
         const shareOptions = document.getElementById('shareOptions');
         const shareResult = document.getElementById('shareResult');
