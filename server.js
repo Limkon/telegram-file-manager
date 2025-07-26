@@ -381,26 +381,26 @@ async function moveItem(itemId, itemType, targetFolderId, userId, overwriteList)
         const folderToMove = (await data.getItemsByIds([itemId], userId))[0];
         const existingFolder = await data.findFolderByName(folderToMove.name, targetFolderId, userId);
 
-        if (existingFolder) { // 合併邏輯
+        if (existingFolder) {
             const children = await data.getChildrenOfFolder(itemId, userId);
             for (const child of children) {
                 await moveItem(child.id, child.type, existingFolder.id, userId, overwriteList);
             }
-            await data.deleteFolderRecursive(itemId, userId);
+            await data.deleteSingleFolder(itemId, userId); 
         } else {
-            await data.moveItems([itemId], targetFolderId, userId);
+            await data.moveItems([], [itemId], targetFolderId, userId);
         }
     } else { // file
         const fileToMove = (await data.getFilesByIds([itemId], userId))[0];
         const conflict = await data.findFileInFolder(fileToMove.fileName, targetFolderId, userId);
         
-        if (conflict && overwriteList.includes(fileToMove.name)) {
+        if (conflict && overwriteList.includes(fileToMove.fileName)) {
             const storage = storageManager.getStorage();
             const filesToDelete = await data.getFilesByIds([conflict.message_id], userId);
             await storage.remove(filesToDelete, userId);
-            await data.moveItems([itemId], targetFolderId, userId);
+            await data.moveItems([itemId], [], targetFolderId, userId);
         } else if (!conflict) {
-            await data.moveItems([itemId], targetFolderId, userId);
+            await data.moveItems([itemId], [], targetFolderId, userId);
         }
     }
 }
@@ -421,6 +421,7 @@ app.post('/api/move', requireLogin, async (req, res) => {
         
         res.json({ success: true, message: "移動成功" });
     } catch (error) { 
+        console.error("Move error:", error);
         res.status(500).json({ success: false, message: '移動失敗' }); 
     }
 });
