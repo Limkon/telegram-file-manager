@@ -103,12 +103,22 @@
     .upload-options .custom-upload-btn { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; cursor: pointer; text-align: center; }
     .upload-options .custom-upload-btn:hover { background-color: #e2e6ea; }
     .upload-options input[type="file"] { display: none; }
-    /* --- *** 新增部分 *** --- */
     #conflictModal .move-modal-content { max-width: 500px; }
     #conflictModal p { margin-bottom: 10px; }
     #conflictFileName { font-weight: bold; color: #dc3545; }
     #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
     #conflictOptions button { width: auto; padding: 8px 16px; }
+    
+    /* --- *** 關鍵修正 開始 *** --- */
+    .item-icon .fa-folder { color: #ffc107; } /* 資料夾: 黃色 */
+    .item-icon .fa-file-pdf { color: #e63946; } /* PDF: 紅色 */
+    .item-icon .fa-file-archive { color: #f77f00; } /* 壓縮檔: 橘色 */
+    .item-icon .fa-file-video { color: #8338ec; } /* 影片: 紫色 */
+    .item-icon .fa-file-audio { color: #00b4d8; } /* 音訊: 藍色 */
+    .item-icon .fa-file-image { color: #52b788; } /* 圖片: 綠色 */
+    .item-icon .fa-file-alt { color: #495057; } /* 文字檔: 深灰色 */
+    .item-icon .fa-file { color: #adb5bd; } /* 未知檔案: 淺灰色 */
+    /* --- *** 關鍵修正 結束 *** --- */
   </style>
 </head>
 <body>
@@ -183,7 +193,6 @@
     </div>
   </div>
 
-  <!-- --- *** 新增部分 開始 *** --- -->
   <div id="conflictModal" class="modal">
     <div class="move-modal-content">
         <h3>檔案衝突</h3>
@@ -199,7 +208,6 @@
         </div>
     </div>
   </div>
-  <!-- --- *** 新增部分 結束 *** --- -->
 
   <div id="uploadModal" class="modal">
     <div class="upload-modal-content">
