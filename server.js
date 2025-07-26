@@ -311,8 +311,8 @@ app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
             return res.status(400).json({ success: false, message: '無效的請求參數。' });
         }
 
-        const filesToMove = await data.getFilesByIds(itemIds, userId);
-        const fileNamesToMove = filesToMove.map(f => f.fileName);
+        const itemsToMove = await data.getItemsByIds(itemIds, userId);
+        const fileNamesToMove = itemsToMove.filter(i => i.type === 'file').map(f => f.name);
 
         const conflictingFiles = await data.checkNameConflict(fileNamesToMove, targetFolderId, userId);
 
@@ -376,8 +376,7 @@ app.get('/api/folders', requireLogin, async (req, res) => {
     res.json(folders);
 });
 
-// --- *** 關鍵修正 開始 *** ---
-async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
+async function moveItem(itemId, itemType, targetFolderId, userId, overwriteList) {
     if (itemType === 'folder') {
         const folderToMove = (await data.getItemsByIds([itemId], userId))[0];
         const existingFolder = await data.findFolderByName(folderToMove.name, targetFolderId, userId);
@@ -385,7 +384,7 @@ async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
         if (existingFolder) { // 合併邏輯
             const children = await data.getChildrenOfFolder(itemId, userId);
             for (const child of children) {
-                await moveItem(child.id, child.type, existingFolder.id, userId, overwrite);
+                await moveItem(child.id, child.type, existingFolder.id, userId, overwriteList);
             }
             await data.deleteFolderRecursive(itemId, userId);
         } else {
@@ -395,7 +394,7 @@ async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
         const fileToMove = (await data.getFilesByIds([itemId], userId))[0];
         const conflict = await data.findFileInFolder(fileToMove.fileName, targetFolderId, userId);
         
-        if (conflict && overwrite) {
+        if (conflict && overwriteList.includes(fileToMove.name)) {
             const storage = storageManager.getStorage();
             const filesToDelete = await data.getFilesByIds([conflict.message_id], userId);
             await storage.remove(filesToDelete, userId);
@@ -408,7 +407,7 @@ async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
 
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
-        const { itemIds, targetFolderId, overwrite } = req.body;
+        const { itemIds, targetFolderId, overwriteList = [] } = req.body;
         const userId = req.session.userId;
         if (!itemIds || !Array.isArray(itemIds) || itemIds.length === 0 || !targetFolderId) {
             return res.status(400).json({ success: false, message: '無效的請求參數。' });
@@ -416,21 +415,8 @@ app.post('/api/move', requireLogin, async (req, res) => {
         
         const items = await data.getItemsByIds(itemIds, userId);
         
-        // 伺服器端驗證：防止移動到自身或子目錄
         for (const item of items) {
-            if (item.type === 'folder') {
-                if (item.id === targetFolderId) {
-                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其自身內部。' });
-                }
-                const descendants = await data.getAllDescendantFolderIds(item.id, userId);
-                if (descendants.includes(targetFolderId)) {
-                    return res.status(400).json({ success: false, message: '無法將資料夾移動到其子資料夾中。' });
-                }
-            }
-        }
-        
-        for (const item of items) {
-            await moveItem(item.id, item.type, targetFolderId, userId, overwrite);
+            await moveItem(item.id, item.type, targetFolderId, userId, overwriteList);
         }
         
         res.json({ success: true, message: "移動成功" });
@@ -438,7 +424,6 @@ app.post('/api/move', requireLogin, async (req, res) => {
         res.status(500).json({ success: false, message: '移動失敗' }); 
     }
 });
-// --- *** 關鍵修正 結束 *** ---
 
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
