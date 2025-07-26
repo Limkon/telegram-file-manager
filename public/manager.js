@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 处理空文件夹提示
         if (allNewItems.length === 0) {
             if(currentView === 'grid') parentGrid.innerHTML = isSearchMode ? '<p>找不到符合条件的档案。</p>' : '<p>这个资料夹是空的。</p>';
-            else parentList.innerHTML = isSearchMode ? '<div class="list-item"><p>找不到符合条件的档案。</p></div>' : '<div class="list-item"><p>这个资料夹是空的。</p></div>';
+            else parentList.innerHTML = isSearchMode ? '<div class="list-item"><p>找不到符合条件的档案。</p></div>' : '<div class="list-item"><p>这个资料夾是空的。</p></div>';
         } else {
             const emptyGridMsg = parentGrid.querySelector('p');
             if(emptyGridMsg) emptyGridMsg.remove();
@@ -654,15 +654,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('popstate', () => {
         if (document.getElementById('itemGrid')) {
             const pathParts = window.location.pathname.split('/');
-            const folderId = parseInt(pathParts[pathParts.length - 1], 10);
-            if (!isNaN(folderId)) {
-                loadFolderContents(folderId);
-            } else {
-                // 如果URL是根目录'/'，则加载根目录内容
-                if(window.location.pathname === '/') {
-                    loadFolderContents(1); 
-                }
+            // 使用 last item 来处理 /folder/1 和 /folder/1/ 的情况
+            const lastPart = pathParts.filter(p => p).pop();
+            let folderId = parseInt(lastPart, 10);
+            if (isNaN(folderId)) {
+                folderId = 1; // 默认为根目录
             }
+            loadFolderContents(folderId);
         }
     });
     if (createFolderBtn) {
