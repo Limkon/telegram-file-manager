@@ -242,7 +242,6 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
-// --- *** 關鍵修正 開始 *** ---
 app.post('/api/text-file', requireLogin, async (req, res) => {
     const { mode, fileId, folderId, fileName, content } = req.body;
     const userId = req.session.userId;
@@ -269,15 +268,11 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
         } else {
             return res.status(400).json({ success: false, message: '請求參數無效' });
         }
-        
-        // 將新檔案的 ID 回傳給前端
         res.json({ success: true, fileId: result.fileId });
-        
     } catch (error) {
         res.status(500).json({ success: false, message: '伺服器內部錯誤' });
     }
 });
-// --- *** 關鍵修正 結束 *** ---
 
 app.get('/api/file-info/:id', requireLogin, async (req, res) => {
     try {
@@ -381,6 +376,36 @@ app.get('/api/folders', requireLogin, async (req, res) => {
     res.json(folders);
 });
 
+// --- *** 關鍵修正 開始 *** ---
+async function moveItem(itemId, itemType, targetFolderId, userId, overwrite) {
+    if (itemType === 'folder') {
+        const folderToMove = (await data.getItemsByIds([itemId], userId))[0];
+        const existingFolder = await data.findFolderByName(folderToMove.name, targetFolderId, userId);
+
+        if (existingFolder) { // 合併邏輯
+            const children = await data.getChildrenOfFolder(itemId, userId);
+            for (const child of children) {
+                await moveItem(child.id, child.type, existingFolder.id, userId, overwrite);
+            }
+            await data.deleteFolderRecursive(itemId, userId); // 刪除空的源資料夾
+        } else { // 正常移動
+            await data.moveItems([itemId], targetFolderId, userId);
+        }
+    } else { // itemType is 'file'
+        const fileToMove = (await data.getFilesByIds([itemId], userId))[0];
+        const conflict = await data.findFileInFolder(fileToMove.fileName, targetFolderId, userId);
+
+        if (conflict && overwrite) {
+            const storage = storageManager.getStorage();
+            const filesToDelete = await data.getFilesByIds([conflict.message_id], userId);
+            await storage.remove(filesToDelete, userId);
+            await data.moveItems([itemId], targetFolderId, userId);
+        } else if (!conflict) {
+            await data.moveItems([itemId], targetFolderId, userId);
+        }
+    }
+}
+
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId, overwrite } = req.body;
@@ -389,26 +414,17 @@ app.post('/api/move', requireLogin, async (req, res) => {
             return res.status(400).json({ success: false, message: '無效的請求參數。' });
         }
         
-        if (overwrite) {
-            const filesToMove = await data.getFilesByIds(itemIds, userId);
-            const fileNamesToMove = filesToMove.map(f => f.fileName);
-            const storage = storageManager.getStorage();
-
-            const existingFilesData = await Promise.all(
-                fileNamesToMove.map(name => data.findFileInFolder(name, targetFolderId, userId))
-            );
-            const messageIdsToDelete = existingFilesData.filter(f => f).map(f => f.message_id);
-
-            if (messageIdsToDelete.length > 0) {
-                const filesToDeleteDetails = await data.getFilesByIds(messageIdsToDelete, userId);
-                await storage.remove(filesToDeleteDetails, userId);
-            }
+        const items = await data.getItemsByIds(itemIds, userId);
+        for (const item of items) {
+            await moveItem(item.id, item.type, targetFolderId, userId, overwrite);
         }
-
-        await data.moveItems(itemIds, targetFolderId, userId);
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false, message: '移動失敗' }); }
+        
+        res.json({ success: true, message: "移動成功" });
+    } catch (error) { 
+        res.status(500).json({ success: false, message: '移動失敗' }); 
+    }
 });
+// --- *** 關鍵修正 結束 *** ---
 
 app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
