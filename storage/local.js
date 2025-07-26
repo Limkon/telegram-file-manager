@@ -1,4 +1,3 @@
-// storage/local.js
 const fs = require('fs').promises;
 const path = require('path');
 const data = require('../data.js');
@@ -26,7 +25,9 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
     
     const messageId = Date.now() + Math.floor(Math.random() * 1000);
 
-    await data.addFile({
+    // --- *** 關鍵修正 開始 *** ---
+    // 接收來自 data.addFile 的回傳結果，其中包含了新的 ID
+    const dbResult = await data.addFile({
         message_id: messageId,
         fileName,
         mimetype,
@@ -35,7 +36,9 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId) {
         date: Date.now(),
     }, folderId, userId, 'local');
     
-    return { success: true, message: '檔案已儲存至本地。' };
+    // 在回傳物件中加入 fileId
+    return { success: true, message: '檔案已儲存至本地。', fileId: dbResult.fileId };
+    // --- *** 關鍵修正 結束 *** ---
 }
 
 async function remove(files, userId) {
