@@ -41,11 +41,16 @@ body {
   border: none;
   cursor: pointer;
   font-size: 16px;
+  /* --- *** 关键修正 开始 *** --- */
+  height: 40px; /* 设定一个固定的高度 */
+  box-sizing: border-box; /* 确保 padding 和 border 不会增加额外的高度 */
+  /* --- *** 关键修正 结束 *** --- */
 }
 .upload-link-btn:hover {
   background-color: #0069d9;
 }
 
+/* 面包屑 */
 .breadcrumb {
     display: flex;
     align-items: center;
@@ -64,6 +69,7 @@ body {
 .breadcrumb span { color: #6c757d; font-weight: normal; }
 .breadcrumb .separator { margin: 0 10px; color: #6c757d; }
 
+/* 项目网格与拖拽区域 */
 #dropZone {
     position: relative;
     border: 2px dashed #ccc;
@@ -217,6 +223,7 @@ body {
     font-size: 0.9em;
 }
 
+/* 浮动操作栏 */
 .action-bar {
   position: fixed;
   bottom: 20px;
@@ -245,6 +252,7 @@ body {
 .action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
 .action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
 
+/* 模态框 */
 .modal {
     display: none;
     position: fixed;
@@ -319,6 +327,7 @@ body {
 #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
 #conflictOptions button { width: auto; padding: 8px 16px; }
 
+/* --- 手机端优化 --- */
 @media (max-width: 768px) {
     body {
         padding: 10px;
