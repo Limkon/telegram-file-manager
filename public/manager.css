@@ -221,7 +221,7 @@ body {
     font-size: 0.9em;
 }
 
-/* 浮动操作栏 */
+/* --- *** 浮动操作栏 (关键修正) *** --- */
 .action-bar {
   position: fixed;
   bottom: 20px;
@@ -243,14 +243,34 @@ body {
 .action-bar.visible { bottom: 20px; }
 .action-bar #selectAllBtn { background: #495057; color: white; border: none; padding: 8px 12px; margin-right: 15px; border-radius: 5px; cursor: pointer; flex-shrink: 0; }
 .action-bar #selectionCount { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
-.action-bar .actions { display: flex; align-items: center; }
-.action-bar .actions button { background: #495057; color: white; border: none; padding: 8px 12px; margin-left: 10px; border-radius: 5px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; transition: background-color 0.2s; }
-.action-bar .actions button:disabled { background: #343a40; color: #6c757d; cursor: not-allowed; }
-.action-bar .actions button:not(:disabled):hover { background: #5a6268; }
-.action-bar .actions #deleteBtn:not(:disabled) { background: #dc3545; }
-.action-bar .actions #deleteBtn:not(:disabled):hover { background: #c82333; }
+.action-bar .actions { display: flex; align-items: center; gap: 8px; } /* 增加按钮间距 */
+.action-bar .actions button { 
+    background: #495057; 
+    color: white; 
+    border: none; 
+    padding: 8px 12px; 
+    /* margin-left: 10px;  - 改用 gap 替代 */
+    border-radius: 5px; 
+    cursor: pointer; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 5px; 
+    flex-shrink: 0; 
+    transition: background-color 0.2s, opacity 0.2s; 
+}
+.action-bar .actions button:disabled { background: #343a40; color: #6c757d; cursor: not-allowed; opacity: 0.6; }
+.action-bar .actions button:not(:disabled):hover { opacity: 0.85; }
+
+/* 为每个按钮设定独特的颜色 */
 .action-bar .actions #createFolderBtn { background-color: #17a2b8; }
-.action-bar .actions #createFolderBtn:not(:disabled):hover { background-color: #138496; }
+.action-bar .actions #textEditBtn { background-color: #007bff; }
+.action-bar .actions #multiSelectBtn { background-color: #6f42c1; }
+.action-bar .actions #previewBtn { background-color: #17a2b8; }
+.action-bar .actions #moveBtn { background-color: #fd7e14; }
+.action-bar .actions #shareBtn { background-color: #28a745; }
+.action-bar .actions #renameBtn { background-color: #6610f2; }
+.action-bar .actions #downloadBtn { background-color: #20c997; }
+.action-bar .actions #deleteBtn { background-color: #dc3545; }
 
 /* 模态框 */
 .modal {
@@ -375,9 +395,12 @@ body {
     .action-bar #selectionCount {
         font-size: 12px;
     }
+    .action-bar .actions {
+        gap: 5px; /* 在手机端缩小按钮间距 */
+    }
     .action-bar .actions button {
         padding: 8px;
-        margin-left: 5px;
+        /* margin-left: 5px; - 改用 gap 替代 */
         font-size: 12px;
     }
     .action-bar .actions button .button-text,
