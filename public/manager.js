@@ -200,7 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (moveBtn) moveBtn.disabled = count === 0 || isSearchMode;
         if (deleteBtn) deleteBtn.disabled = count === 0;
         
-        actionBar.style.bottom = '20px';
+        // --- *** 關鍵修正 *** ---
+        // 恢復使用 classList.toggle 來控制顯示，確保動畫正常
+        // 條件為 true，因為即使未選擇任何項目，也需要顯示「新建文字檔」按鈕
+        actionBar.classList.toggle('visible', true);
 
         if (!isMultiSelectMode && multiSelectBtn) {
             multiSelectBtn.classList.remove('active');
