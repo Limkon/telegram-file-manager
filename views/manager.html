@@ -35,13 +35,13 @@
         font-size: 24px;
         font-weight: bold;
         color: #007bff;
-        pointer-events: none;
+        pointer-events: none; /* 讓滑鼠事件穿透覆蓋層 */
     }
     #dropZone.dragover #dropZoneOverlay {
         display: flex;
     }
     .preview-modal-content { 
-        background: #ffffff;
+        background: #ffffff; /* 將背景改为白色 */
         width: auto; 
         max-width: 90vw; 
         max-height: 90vh; 
@@ -50,18 +50,25 @@
         position: absolute; 
         top: 15px; 
         right: 35px; 
-        color: #ffffff;
+        color: #ffffff; /* 將關閉按鈕改為純白色 */
         font-size: 40px; 
         font-weight: bold; 
         cursor: pointer; 
     }
     #uploadModal .close-button {
-        color: #333;
+        color: #333; /* 讓上傳彈窗的關閉按鈕變成深色 */
     }
     .preview-modal-content img, .preview-modal-content video { max-width: 100%; max-height: 90vh; display: block; object-fit: contain; }
     .preview-modal-content pre { background-color: #2b2b2b; color: #f1f1f1; padding: 20px; border-radius: 5px; text-align: left; white-space: pre-wrap; word-wrap: break-word; max-height: 90vh; overflow-y: auto; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 14px; }
-    .no-preview { color: #f1f1f1; text-align: center; }
-    .no-preview i { font-size: 48px; margin-bottom: 10px; display: block; }
+    .no-preview {
+        color: #f1f1f1; /* 提示文字維持淺色 */
+        text-align: center;
+    }
+    .no-preview i {
+        font-size: 48px;
+        margin-bottom: 10px;
+        display: block;
+    }
     .share-modal-content { background-color: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; text-align: center; }
     .share-modal-content h3 { margin-top: 0; }
     .share-modal-content select, .share-modal-content button { width: 100%; padding: 10px; margin-top: 15px; border-radius: 5px; border: 1px solid #ccc; }
@@ -96,29 +103,6 @@
     .notification.local { margin-bottom: 15px; }
     .notification.success { background-color: #28a745; }
     .notification.error { background-color: #dc3545; }
-    .header-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    #changePasswordBtn { background-color: #ffc107; }
-    #logoutBtn { background-color: #dc3545; }
-    .upload-options { display: flex; gap: 10px; margin-bottom: 15px; }
-    .upload-options .custom-upload-btn { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 4px; background-color: #f8f9fa; cursor: pointer; text-align: center; }
-    .upload-options .custom-upload-btn:hover { background-color: #e2e6ea; }
-    .upload-options input[type="file"] { display: none; }
-    #conflictModal .move-modal-content { max-width: 500px; }
-    #conflictModal p { margin-bottom: 10px; }
-    #conflictFileName { font-weight: bold; color: #dc3545; }
-    #conflictOptions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; }
-    #conflictOptions button { width: auto; padding: 8px 16px; }
-    
-    /* --- *** 關鍵修正 開始 *** --- */
-    .item-icon .fa-folder { color: #ffc107; } /* 資料夾: 黃色 */
-    .item-icon .fa-file-pdf { color: #e63946; } /* PDF: 紅色 */
-    .item-icon .fa-file-archive { color: #f77f00; } /* 壓縮檔: 橘色 */
-    .item-icon .fa-file-video { color: #8338ec; } /* 影片: 紫色 */
-    .item-icon .fa-file-audio { color: #00b4d8; } /* 音訊: 藍色 */
-    .item-icon .fa-file-image { color: #52b788; } /* 圖片: 綠色 */
-    .item-icon .fa-file-alt { color: #495057; } /* 文字檔: 深灰色 */
-    .item-icon .fa-file { color: #adb5bd; } /* 未知檔案: 淺灰色 */
-    /* --- *** 關鍵修正 結束 *** --- */
   </style>
 </head>
 <body>
@@ -127,12 +111,10 @@
       <a href="#" id="homeLink">
         <h1><i class="fas fa-home"></i> 文件管理器</h1>
       </a>
-      <div class="header-buttons">
+      <div style="display: flex; gap: 10px; align-items: center;">
         <a href="/shares-page" class="upload-link-btn"><i class="fas fa-share-alt"></i><span class="button-text"> 管理共享</span></a>
         <button class="upload-link-btn create-folder-btn"><i class="fas fa-folder-plus"></i><span class="button-text"> 建立資料夾</span></button>
         <button id="showUploadModalBtn" class="upload-link-btn"><i class="fas fa-upload"></i><span class="button-text"> 上傳文件</span></button>
-        <button id="changePasswordBtn" class="upload-link-btn"><i class="fas fa-key"></i><span class="button-text"> 修改密碼</span></button>
-        <button id="logoutBtn" class="upload-link-btn"><i class="fas fa-sign-out-alt"></i><span class="button-text"> 登出</span></button>
       </div>
     </header>
 
@@ -193,42 +175,20 @@
     </div>
   </div>
 
-  <div id="conflictModal" class="modal">
-    <div class="move-modal-content">
-        <h3>檔案衝突</h3>
-        <p>目標資料夾中已存在同名檔案：</p>
-        <p><b id="conflictFileName"></b></p>
-        <p>您要如何處理？</p>
-        <div id="conflictOptions">
-            <button data-action="overwrite">覆蓋</button>
-            <button data-action="overwrite_all">全部覆蓋</button>
-            <button data-action="skip">取消</button>
-            <button data-action="skip_all">全部取消</button>
-            <button data-action="abort" style="background-color: #dc3545;">放棄</button>
-        </div>
-    </div>
-  </div>
-
   <div id="uploadModal" class="modal">
     <div class="upload-modal-content">
         <span class="close-button" id="closeUploadModalBtn">&times;</span>
         <h2>文件上傳</h2>
         <div id="uploadNotificationArea"></div>
         <form id="uploadForm">
-            <div class="upload-options">
-                <label for="fileInput" class="custom-upload-btn"><i class="fas fa-file"></i> 選擇檔案</label>
-                <input type="file" name="files" id="fileInput" multiple />
-                
-                <label for="folderInput" class="custom-upload-btn"><i class="fas fa-folder"></i> 選擇資料夾</label>
-                <input type="file" id="folderInput" webkitdirectory directory />
-            </div>
-
+            <input type="file" name="files" id="fileInput" required multiple />
             <ul id="file-selection-list"></ul>
             <label for="folderSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">上傳到資料夾：</label>
             <select name="folderId" id="folderSelect">
+                <option value="1">/ (根目錄)</option>
             </select>
-            <input type="text" name="caption" id="uploadCaption" placeholder="可選的說明文字(對所有文件生效)" />
-            <button type="submit" id="uploadSubmitBtn">上傳</button>
+            <input type="text" name="caption" placeholder="可選的說明文字(對所有文件生效)" />
+            <button type="submit">上傳</button>
         </form>
         <div class="progress-area" id="progressArea">
             <div class="progress-bar-container">
@@ -248,12 +208,11 @@
     <button id="selectAllBtn" title="全選/取消全選"><i class="fas fa-check-double"></i></button>
     <span id="selectionCount">已選擇 0 個項目</span>
     <div class="actions">
-        <button id="textEditBtn" title="新建文字檔"><i class="fas fa-file-alt"></i></button>
         <button id="multiSelectBtn" title="多選模式"><i class="fas fa-tasks"></i></button>
         <button id="previewBtn" title="預覽" disabled><i class="fas fa-eye"></i></button>
         <button id="moveBtn" title="移動" disabled><i class="fas fa-people-arrows"></i></button>
         <button id="shareBtn" title="分享" disabled><i class="fas fa-share-alt"></i></button>
-        <button id="renameBtn" title="重命名" disabled><i class="fas fa-i-cursor"></i></button>
+        <button id="renameBtn" title="重命名" disabled><i class="fas fa-edit"></i></button>
         <button id="downloadBtn" title="下載" disabled><i class="fas fa-download"></i></button>
         <button id="deleteBtn" title="刪除" disabled><i class="fas fa-trash-alt"></i></button>
     </div>
