@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeUploadModalBtn = document.getElementById('closeUploadModalBtn');
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput'); // 新增
+    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn'); // 新增
     const fileListContainer = document.getElementById('file-selection-list');
     const folderSelect = document.getElementById('folderSelect');
     const uploadNotificationArea = document.getElementById('uploadNotificationArea');
@@ -284,16 +286,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const progressBar = isDrag ? dragUploadProgressBar : document.getElementById('progressBar');
         const progressArea = isDrag ? dragUploadProgressArea : document.getElementById('progressArea');
-        const submitButton = uploadForm.querySelector('button[type="submit"]');
-
+        
         progressArea.style.display = 'block';
         progressBar.style.width = '0%';
         progressBar.textContent = '0%';
 
-        if (!isDrag) {
-            submitButton.disabled = true;
-            submitButton.textContent = '上傳中...';
-        }
+        if(uploadSubmitBtn) uploadSubmitBtn.disabled = true;
         
         try {
             const res = await axios.post('/upload', formData, {
@@ -315,10 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showNotification('上傳失敗: ' + (error.response?.data?.message || '伺服器錯誤'), 'error', !isDrag ? uploadNotificationArea : null);
         } finally {
-            if (!isDrag) {
-                submitButton.disabled = false;
-                submitButton.textContent = '上傳';
-            }
+            if(uploadSubmitBtn) uploadSubmitBtn.disabled = false;
             setTimeout(() => { progressArea.style.display = 'none'; }, 2000);
         }
     };
@@ -360,30 +355,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (uploadForm) {
+    // --- *** 修改部分 開始 *** ---
+    if (fileInput) {
         fileInput.addEventListener('change', () => {
             fileListContainer.innerHTML = '';
             if (fileInput.files.length > 0) {
                 for (const file of fileInput.files) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `${file.name} (${formatBytes(file.size)})`;
-                    fileListContainer.appendChild(listItem);
+                    const li = document.createElement('li');
+                    li.textContent = file.name;
+                    fileListContainer.appendChild(li);
+                }
+                uploadSubmitBtn.style.display = 'block';
+            }
+        });
+    }
+    
+    if(folderInput) {
+        folderInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const folderName = files[0].webkitRelativePath.split('/')[0];
+                fileListContainer.innerHTML = `<li>已選擇資料夾: <b>${folderName}</b> (包含 ${files.length} 個檔案)</li>`;
+                uploadSubmitBtn.style.display = 'none'; // 隱藏原上傳按鈕，因為我們將在確認後處理
+                
+                if (confirm(`確定要上傳資料夾 "${folderName}" 嗎？\n系統將在目前位置建立一個同名資料夾來存放所有檔案。`)) {
+                    handleFolderUpload(files, folderName);
+                } else {
+                    // 清空選擇
+                    fileListContainer.innerHTML = '';
+                    e.target.value = ''; 
                 }
             }
         });
-
-        uploadForm.onsubmit = async function (e) {
-            e.preventDefault();
-            const files = fileInput.files;
-            const targetFolderId = folderSelect.value;
-            if (files.length > 0) {
-                uploadFiles(Array.from(files), targetFolderId, false);
-            } else {
-                showNotification('請選擇要上傳的檔案。', 'error', uploadNotificationArea);
-            }
-        };
     }
-    
+
+    async function handleFolderUpload(files, folderName) {
+        const parentId = folderSelect.value;
+        try {
+            // 1. 在伺服器建立同名資料夾
+            const res = await axios.post('/api/folder', { name: folderName, parentId });
+            const newFolderId = res.data.id;
+            
+            // 2. 將所有檔案上傳到新建立的資料夾中
+            await uploadFiles(Array.from(files), newFolderId, false);
+
+        } catch (error) {
+            showNotification('建立資料夾或上傳失敗：' + (error.response?.data?.message || '伺服器錯誤'), 'error', uploadNotificationArea);
+        }
+    }
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // 這個提交只處理手動選擇檔案的情況
+            const files = fileInput.files;
+            if (files.length > 0) {
+                const targetFolderId = folderSelect.value;
+                uploadFiles(Array.from(files), targetFolderId, false);
+            }
+        });
+    }
+    // --- *** 修改部分 結束 *** ---
+
     if (dropZone) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => {
@@ -531,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadNotificationArea.innerHTML = '';
             uploadForm.reset();
             fileListContainer.innerHTML = '';
+            uploadSubmitBtn.style.display = 'block';
             uploadModal.style.display = 'flex';
         });
     }
@@ -539,8 +573,6 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadModal.style.display = 'none';
         });
     }
-
-    // --- *** 關鍵修正 開始 *** ---
     if (previewBtn) {
         previewBtn.addEventListener('click', async () => {
             if (previewBtn.disabled) return;
@@ -548,8 +580,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = currentFolderContents.files.find(f => f.id == messageId);
             if (!file) return;
 
-            // 移除原本跳轉到編輯器的邏輯
-            
             previewModal.style.display = 'flex';
             modalContent.innerHTML = '正在加載預覽...';
             const downloadUrl = `/download/proxy/${messageId}`;
@@ -558,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalContent.innerHTML = `<img src="${downloadUrl}" alt="圖片預覽">`;
             } else if (file.mimetype && file.mimetype.startsWith('video/')) {
                 modalContent.innerHTML = `<video src="${downloadUrl}" controls autoplay></video>`;
-            } else if (file.mimetype && (file.mimetype.startsWith('text/') || file.name.endsWith('.txt'))) { // 讓 .txt 也符合此條件
+            } else if (file.mimetype && (file.mimetype.startsWith('text/') || file.name.endsWith('.txt'))) {
                 try {
                     const res = await axios.get(`/file/content/${messageId}`);
                     const escapedContent = res.data.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -571,8 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    // --- *** 關鍵修正 結束 *** ---
-
     if (renameBtn) {
         renameBtn.addEventListener('click', async () => {
              if (renameBtn.disabled) return;
