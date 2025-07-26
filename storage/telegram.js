@@ -1,4 +1,3 @@
-// storage/telegram.js
 require('dotenv').config();
 const axios = require('axios');
 const FormData = require('form-data');
@@ -12,7 +11,7 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId, caption 
     formData.append('chat_id', process.env.CHANNEL_ID);
     formData.append('caption', caption || fileName);
     formData.append('document', fileBuffer, { filename: fileName });
-    
+
     const res = await axios.post(`${TELEGRAM_API}/sendDocument`, formData, { headers: formData.getHeaders() });
 
     if (res.data.ok) {
@@ -24,11 +23,11 @@ async function upload(fileBuffer, fileName, mimetype, userId, folderId, caption 
               message_id: result.message_id,
               fileName,
               mimetype: fileData.mime_type || mimetype,
+              size: fileData.file_size,
               file_id: fileData.file_id,
               thumb_file_id: fileData.thumb ? fileData.thumb.file_id : null,
               date: Date.now(),
             }, folderId, userId, 'telegram');
-            // --- *** 关键修正：回传新的 message_id *** ---
             return { success: true, data: res.data, fileId: result.message_id };
         }
     }
@@ -68,7 +67,7 @@ async function remove(files, userId) {
     if (results.success.length > 0) {
         await data.deleteFilesByIds(results.success, userId);
     }
-    
+
     return results;
 }
 
