@@ -274,6 +274,46 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
     }
 });
 
+app.post('/api/create-folder-structure', requireLogin, async (req, res) => {
+    const { paths, parentId } = req.body;
+    const userId = req.session.userId;
+    
+    if (!paths || !Array.isArray(paths) || !parentId) {
+        return res.status(400).json({ success: false, message: '無效的請求參數' });
+    }
+
+    const pathIdMap = {};
+    
+    try {
+        for (const fullPath of paths) {
+            let currentParentId = parentId;
+            const parts = fullPath.split('/').filter(p => p);
+
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i];
+                const partialPath = parts.slice(0, i + 1).join('/');
+
+                if (pathIdMap[partialPath]) {
+                    currentParentId = pathIdMap[partialPath];
+                    continue;
+                }
+
+                let folder = await data.findFolderByName(part, currentParentId, userId);
+                if (folder) {
+                    currentParentId = folder.id;
+                } else {
+                    const newFolder = await data.createFolder(part, currentParentId, userId);
+                    currentParentId = newFolder.id;
+                }
+                pathIdMap[partialPath] = currentParentId;
+            }
+        }
+        res.json({ success: true, pathIdMap });
+    } catch (error) {
+        res.status(500).json({ success: false, message: '建立目錄結構失敗' });
+    }
+});
+
 app.get('/api/file-info/:id', requireLogin, async (req, res) => {
     try {
         const fileId = parseInt(req.params.id, 10);
