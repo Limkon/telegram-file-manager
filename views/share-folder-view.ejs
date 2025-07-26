@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分享的資料夾: <%= folder.name %></title>
+    <title>分享的资料夹: <%= folder.name %></title>
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/manager.css">
     <style>
@@ -16,12 +16,12 @@
 <body>
     <div class="container">
         <header class="main-header">
-            <h1><i class="fas fa-folder-open"></i> 分享的資料夾: <%= folder.name === '/' ? '根目录' : folder.name %></h1>
+            <h1><i class="fas fa-folder-open"></i> 分享的资料夹: <%= folder.name === '/' ? '根目录' : folder.name %></h1>
         </header>
 
         <div class="item-grid">
             <% contents.folders.forEach(f => { %>
-                <div class="item-card" data-id="<%= f.id %>" data-type="folder" title="不支援在分享頁面中打開子資料夾">
+                <div class="item-card" data-id="<%= f.id %>" data-type="folder" title="不支援在分享页面中打开子资料夹">
                     <div class="item-icon"><i class="fas fa-folder"></i></div>
                     <div class="item-info"><h5 title="<%= f.name %>"><%= f.name %></h5></div>
                 </div>
@@ -30,9 +30,9 @@
                 <a href="/share/download/<%= folder.share_token %>/<%= f.id %>" class="item-card" data-id="<%= f.id %>" data-type="file" target="_blank" rel="noopener noreferrer">
                     <div class="item-icon">
                         <% if (f.storage_type === 'telegram' && f.thumb_file_id) { %>
-                            <img src="/share/thumbnail/<%= folder.share_token %>/<%= f.id %>" alt="縮圖" loading="lazy">
+                            <img src="/share/thumbnail/<%= folder.share_token %>/<%= f.id %>" alt="缩图" loading="lazy">
                         <% } else if (f.mimetype && f.mimetype.startsWith('image/')) { %>
-                            <img src="/share/download/<%= folder.share_token %>/<%= f.id %>" alt="圖片" loading="lazy">
+                            <img src="/share/download/<%= folder.share_token %>/<%= f.id %>" alt="图片" loading="lazy">
                         <% } else if (f.mimetype && f.mimetype.startsWith('video/')) { %>
                             <video src="/share/download/<%= folder.share_token %>/<%= f.id %>#t=0.1" preload="metadata" muted></video>
                         <% } else { %>
@@ -45,7 +45,7 @@
         </div>
 
         <% if (contents.folders.length === 0 && contents.files.length === 0) { %>
-            <p style="text-align: center; color: #6c757d;">這個分享的資料夾是空的。</p>
+            <p style="text-align: center; color: #6c757d;">这个分享的资料夹是空的。</p>
         <% } %>
     </div>
 </body>
