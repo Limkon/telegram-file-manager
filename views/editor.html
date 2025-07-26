@@ -167,13 +167,20 @@
                         saveStatus.textContent = '';
                     }, 2000);
 
-                    if (mode === 'create' && response.data.fileId) {
+                    // --- *** 關鍵修正 開始 *** ---
+                    // 無論是新建還是編輯，只要儲存成功，就用伺服器回傳的最新 fileId 更新本地狀態
+                    if (response.data.success && response.data.fileId) {
                         fileId = response.data.fileId;
-                        mode = 'edit';
+                        mode = 'edit'; // 儲存後一律變為編輯模式
+                        
+                        // 更新瀏覽器地址欄的 URL，以反映最新的 fileId
                         const newUrl = `${window.location.pathname}?mode=edit&fileId=${fileId}`;
                         history.pushState({}, '', newUrl);
+
+                        // 同步更新輸入框中的檔名，以防檔名被自動加上 .txt
                         fileNameInput.value = fileName;
                     }
+                    // --- *** 關鍵修正 結束 *** ---
 
                 } catch (error) {
                     alert('儲存失敗：' + (error.response?.data?.message || '伺服器錯誤'));
