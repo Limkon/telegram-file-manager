@@ -74,7 +74,6 @@
     button[type="submit"]:hover {
       background-color: var(--button-hover-color);
     }
-    /* --- *** 新增部分 開始 *** --- */
     .register-link {
         margin-top: 20px;
         font-size: 14px;
@@ -86,13 +85,12 @@
     .register-link a:hover {
         text-decoration: underline;
     }
-    /* --- *** 新增部分 結束 *** --- */
   </style>
 </head>
 <body>
   <div class="login-container">
-    <h2>登入網絡硬盤</h2>
-    <form action="/login" method="post">
+    <h2>登入文件管理器</h2>
+    <form id="loginForm" action="/login" method="post">
       <div class="form-group">
         <label for="username">用戶名</label>
         <input id="username" name="username" placeholder="請輸入用戶名" required>
@@ -106,6 +104,26 @@
     <div class="register-link">
         還沒有帳號？ <a href="/register">點此註冊</a>
     </div>
-    </div>
+  </div>
+
+  <!-- --- *** 關鍵修正 開始 *** --- -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+
+      const handleEnter = (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault(); // 防止預設的換行行為
+          form.submit();
+        }
+      };
+      
+      usernameInput.addEventListener('keydown', handleEnter);
+      passwordInput.addEventListener('keydown', handleEnter);
+    });
+  </script>
+  <!-- --- *** 關鍵修正 結束 *** --- -->
 </body>
 </html>
