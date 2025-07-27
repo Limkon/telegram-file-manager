@@ -234,7 +234,6 @@ async function moveItem(itemId, itemType, targetFolderId, userId, options = {}) 
                 // 合并逻辑
                 const children = await getChildrenOfFolder(itemId, userId);
                 for (const child of children) {
-                    // 递归调用，将子项目移动到已存在的目标资料夹中
                     await moveItem(child.id, child.type, existingFolder.id, userId, options);
                 }
                 await deleteSingleFolder(itemId, userId); // 删除空的来源资料夹
@@ -250,13 +249,11 @@ async function moveItem(itemId, itemType, targetFolderId, userId, options = {}) 
         const conflict = await findFileInFolder(fileToMove.fileName, targetFolderId, userId);
         
         if (conflict && overwriteList.includes(fileToMove.fileName)) {
-            // 覆盖逻辑
             const storage = require('./storage').getStorage();
             const filesToDelete = await getFilesByIds([conflict.message_id], userId);
             await storage.remove(filesToDelete, userId); 
             await moveItems([itemId], [], targetFolderId, userId);
         } else if (!conflict) {
-            // 没有冲突，直接移动
             await moveItems([itemId], [], targetFolderId, userId);
         }
     }
@@ -264,37 +261,34 @@ async function moveItem(itemId, itemType, targetFolderId, userId, options = {}) 
 
 function moveItems(fileIds, folderIds, targetFolderId, userId) {
     return new Promise((resolve, reject) => {
-        db.run("BEGIN TRANSACTION;", (err) => {
-            if (err) return reject(err);
-
-            const promises = [];
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION;");
 
             if (fileIds && fileIds.length > 0) {
                 const filePlaceholders = fileIds.map(() => '?').join(',');
                 const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${filePlaceholders}) AND user_id = ?`;
-                promises.push(new Promise((res, rej) => {
-                    db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], (err) => err ? rej(err) : res());
-                }));
+                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], function(err) {
+                    if (err) {
+                        db.run("ROLLBACK;");
+                        return reject(err);
+                    }
+                });
             }
-
             if (folderIds && folderIds.length > 0) {
                 const folderPlaceholders = folderIds.map(() => '?').join(',');
                 const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
-                promises.push(new Promise((res, rej) => {
-                    db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId], (err) => err ? rej(err) : res());
-                }));
-            }
-
-            Promise.all(promises)
-                .then(() => {
-                    db.run("COMMIT;", (err) => {
-                        if (err) reject(err);
-                        else resolve({ success: true });
-                    });
-                })
-                .catch((err) => {
-                    db.run("ROLLBACK;", () => reject(err));
+                db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId], function(err) {
+                    if (err) {
+                        db.run("ROLLBACK;");
+                        return reject(err);
+                    }
                 });
+            }
+            
+            db.run("COMMIT;", (err) => {
+                if(err) return reject(err);
+                resolve({ success: true });
+            });
         });
     });
 }
@@ -518,6 +512,20 @@ function findFileInFolder(fileName, folderId, userId) {
         db.get(sql, [fileName, folderId, userId], (err, row) => {
             if (err) return reject(err);
             resolve(row);
+        });
+    });
+}
+
+function checkFolderConflict(folderNames, targetFolderId, userId) {
+    return new Promise((resolve, reject) => {
+        if (!folderNames || folderNames.length === 0) {
+            return resolve([]);
+        }
+        const placeholders = folderNames.map(() => '?').join(',');
+        const sql = `SELECT name FROM folders WHERE name IN (${placeholders}) AND parent_id = ? AND user_id = ?`;
+        db.all(sql, [...folderNames, targetFolderId, userId], (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows.map(r => r.name));
         });
     });
 }
