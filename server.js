@@ -303,7 +303,6 @@ app.post('/api/check-existence', requireLogin, async (req, res) => {
     res.json({ success: true, files: existenceChecks });
 });
 
-// --- *** 完整替换 *** ---
 app.post('/api/check-move-conflict', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId } = req.body;
@@ -373,7 +372,6 @@ app.get('/api/folders', requireLogin, async (req, res) => {
     res.json(folders);
 });
 
-// --- *** 完整替换 *** ---
 app.post('/api/move', requireLogin, async (req, res) => {
     try {
         const { itemIds, targetFolderId, overwriteList = [], mergeList = [] } = req.body;
@@ -385,7 +383,6 @@ app.post('/api/move', requireLogin, async (req, res) => {
         const items = await data.getItemsByIds(itemIds, userId);
         
         for (const item of items) {
-            // 修正后的 moveItem 函式现在会处理所有逻辑
             await data.moveItem(item.id, item.type, targetFolderId, userId, { overwriteList, mergeList });
         }
         
