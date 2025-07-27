@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemListView = document.getElementById('itemListView');
     const itemListBody = document.getElementById('itemListBody');
 
-    // 狀態
+    // 状态
     let isMultiSelectMode = false;
     let currentFolderId = 1;
     let currentFolderContents = { folders: [], files: [] };
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let foldersLoaded = false;
     let currentView = 'grid'; // 'grid' or 'list'
 
-    // --- 輔助函式 ---
+    // --- 辅助函式 ---
     const formatBytes = (bytes, decimals = 2) => {
         if (!bytes || bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -94,13 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             isSearchMode = false;
             if (searchInput) searchInput.value = '';
-            // 不再顯示“正在加载”，以避免閃爍
-            // itemGrid.innerHTML = '<p>正在加载...</p>';
-            // itemListBody.innerHTML = '<p>正在加载...</p>';
             currentFolderId = folderId;
             const res = await axios.get(`/api/folder/${folderId}`);
             currentFolderContents = res.data.contents;
-            // 清理已不存在的選擇項
+            // 清理已不存在的选择项
             const currentIds = new Set([...res.data.contents.folders.map(f => String(f.id)), ...res.data.contents.files.map(f => String(f.id))]);
             selectedItems.forEach((_, key) => {
                 if (!currentIds.has(key)) {
@@ -121,9 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const executeSearch = async (query) => {
         try {
             isSearchMode = true;
-            // 不再顯示“正在加载”，以避免閃爍
-            // itemGrid.innerHTML = '<p>正在搜寻...</p>';
-            // itemListBody.innerHTML = '<p>正在搜寻...</p>';
             const res = await axios.get(`/api/search?q=${encodeURIComponent(query)}`);
             currentFolderContents = res.data.contents;
             selectedItems.clear();
@@ -153,8 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             breadcrumb.appendChild(link);
         });
     };
-
-    // --- *** 關鍵修正 開始 (防閃爍渲染) *** ---
+    
     const renderItems = (folders, files) => {
         const parentGrid = itemGrid;
         const parentList = itemListBody;
@@ -172,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
         allNewItems.forEach(item => {
             const itemIdStr = String(item.id);
 
-            // 更新或添加网格视图项目
             if (existingGridElements.has(itemIdStr)) {
                 const el = existingGridElements.get(itemIdStr);
                 const oldName = el.querySelector('h5').textContent;
@@ -185,7 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 parentGrid.appendChild(createItemCard(item));
             }
 
-            // 更新或添加列表视图项目
             if (existingListElements.has(itemIdStr)) {
                 const el = existingListElements.get(itemIdStr);
                 const oldName = el.querySelector('.list-name').textContent;
@@ -215,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 处理空文件夹提示
         if (allNewItems.length === 0) {
             if(currentView === 'grid') parentGrid.innerHTML = isSearchMode ? '<p>找不到符合条件的档案。</p>' : '<p>这个资料夹是空的。</p>';
             else parentList.innerHTML = isSearchMode ? '<div class="list-item"><p>找不到符合条件的档案。</p></div>' : '<div class="list-item"><p>这个资料夾是空的。</p></div>';
@@ -226,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(emptyListMsg) emptyListMsg.parentElement.remove();
         }
     };
-    // --- *** 關鍵修正 結束 *** ---
 
     const createItemCard = (item) => {
         const card = document.createElement('div');
@@ -325,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     const loadFoldersForSelect = async () => {
-        // --- *** 關鍵修正: 增加强制刷新选项 *** ---
         if (foldersLoaded) return;
         try {
             const res = await axios.get('/api/folders');
@@ -452,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderItems(currentFolderContents.folders, currentFolderContents.files);
     };
 
-    // --- *** 新增函式：處理資料夾衝突 *** ---
     async function handleFolderConflict(folderName) {
         return new Promise((resolve) => {
             folderConflictName.textContent = folderName;
@@ -463,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!action) return;
 
                 folderConflictModal.style.display = 'none';
-                folderConflictOptions.onclick = null; // 避免重複觸發
+                folderConflictOptions.onclick = null;
                 resolve(action);
             };
         });
@@ -537,7 +524,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await axios.post('/api/folder', { name: folderName, parentId });
             const targetFolderId = res.data.id;
             
-            // --- *** 關鍵修正: 更新目录列表 *** ---
             foldersLoaded = false; 
 
             await uploadFiles(Array.from(files), targetFolderId, false);
@@ -679,7 +665,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isNaN(folderId)) {
                 loadFolderContents(folderId);
             } else {
-                // 如果URL是根目录'/'，则加载根目录内容
                 if(window.location.pathname === '/') {
                     loadFolderContents(1); 
                 }
@@ -693,7 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await axios.post('/api/folder', { name: name.trim(), parentId: currentFolderId });
                     
-                    // --- *** 關鍵修正: 更新目录列表 *** ---
                     foldersLoaded = false; 
 
                     loadFolderContents(currentFolderId);
@@ -911,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 moveModal.style.display = 'flex';
                 moveTargetFolderId = null;
                 confirmMoveBtn.disabled = true;
-            } catch { alert('无法获取资料夹列表。'); }
+            } catch { alert('无法获取资料夾列表。'); }
         });
     }
     if (folderTree) {
@@ -966,33 +950,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return showNextConflict();
     }
-    
-    // --- *** 完整替换 *** ---
+
     if (confirmMoveBtn) {
         confirmMoveBtn.addEventListener('click', async () => {
             if (!moveTargetFolderId) return;
-    
+
             const itemIds = Array.from(selectedItems.keys()).map(id => parseInt(id, 10));
             const itemsToMove = Array.from(selectedItems.entries()).map(([id, item]) => ({
                 id: parseInt(id, 10),
                 name: item.name,
                 type: item.type
             }));
-    
+
             try {
-                // --- 关键修正：同时检查档案与资料夹冲突 ---
                 const conflictCheckRes = await axios.post('/api/check-move-conflict', {
                     itemIds: itemIds,
                     targetFolderId: moveTargetFolderId
                 });
-    
+
                 const { fileConflicts, folderConflicts } = conflictCheckRes.data;
-    
+
                 let fileOverwriteList = [];
                 let folderMergeList = [];
                 let skippedFolders = [];
-    
-                // 1. 处理资料夹冲突
+
                 if (folderConflicts && folderConflicts.length > 0) {
                     for (const folderName of folderConflicts) {
                         const action = await handleFolderConflict(folderName);
@@ -1010,14 +991,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 }
-    
-                // 过滤掉被略过的项目
+
                 const finalItemsToMove = itemsToMove.filter(item => !skippedFolders.includes(item.id));
                 const finalItemIds = finalItemsToMove.map(item => item.id);
                 const finalFileConflicts = fileConflicts.filter(name => finalItemsToMove.some(item => item.name === name && item.type === 'file'));
-    
-    
-                // 2. 处理档案冲突
+
+
                 if (finalFileConflicts && finalFileConflicts.length > 0) {
                     const result = await handleConflict(finalFileConflicts);
                     if (result.action === 'abort') {
@@ -1028,31 +1007,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     fileOverwriteList = result.overwriteList;
                 }
                 
-                // 如果筛选后没有任何项目需要移动，则直接结束
                 if (finalItemIds.length === 0) {
                     moveModal.style.display = 'none';
                     showNotification('没有项目被移动。', 'info');
                     loadFolderContents(currentFolderId);
                     return;
                 }
-    
-                // 3. 执行移动
+
                 await axios.post('/api/move', {
                     itemIds: finalItemIds,
                     targetFolderId: moveTargetFolderId,
                     overwriteList: fileOverwriteList,
                     mergeList: folderMergeList
                 });
-    
+
                 moveModal.style.display = 'none';
                 loadFolderContents(currentFolderId);
                 showNotification('项目移动成功！', 'success');
-    
+
             } catch (error) {
                 alert('操作失败：' + (error.response?.data?.message || '伺服器错误'));
             }
         });
     }
+    
 
     if (shareBtn && shareModal) {
         const shareOptions = document.getElementById('shareOptions');
@@ -1123,14 +1101,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 初始化页面
     if (document.getElementById('itemGrid')) {
         const pathParts = window.location.pathname.split('/');
-        // 使用 last item 来处理 /folder/1 和 /folder/1/ 的情况
         const lastPart = pathParts.filter(p => p).pop();
         let folderId = parseInt(lastPart, 10);
         if (isNaN(folderId)) {
-            folderId = 1; // 默认为根目录
+            folderId = 1; 
         }
         loadFolderContents(folderId);
     }
