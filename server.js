@@ -242,6 +242,7 @@ app.post('/upload', requireLogin, upload.array('files'), fixFileNameEncoding, as
     res.json({ success: true, results });
 });
 
+// --- *** 完整替换 *** ---
 app.post('/api/text-file', requireLogin, async (req, res) => {
     const { mode, fileId, folderId, fileName, content } = req.body;
     const userId = req.session.userId;
@@ -256,7 +257,7 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
         let result;
 
         if (mode === 'edit' && fileId) {
-            const filesToDelete = await data.getFilesByIds([fileId], userId);
+             const filesToDelete = await data.getFilesByIds([fileId], userId);
             if (filesToDelete.length > 0) {
                 await storage.remove(filesToDelete, userId);
                 result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, filesToDelete[0].folder_id);
@@ -264,15 +265,21 @@ app.post('/api/text-file', requireLogin, async (req, res) => {
                 return res.status(404).json({ success: false, message: '找不到要编辑的原始档案' });
             }
         } else if (mode === 'create' && folderId) {
+             const conflict = await data.checkFullConflict(fileName, folderId, userId);
+            if (conflict) {
+                return res.status(409).json({ success: false, message: '同目录下已存在同名档案或资料夹。' });
+            }
             result = await storage.upload(contentBuffer, fileName, 'text/plain', userId, folderId);
         } else {
             return res.status(400).json({ success: false, message: '请求参数无效' });
         }
         res.json({ success: true, fileId: result.fileId });
     } catch (error) {
+        console.error("Text file error:", error);
         res.status(500).json({ success: false, message: '伺服器内部错误' });
     }
 });
+
 
 app.get('/api/file-info/:id', requireLogin, async (req, res) => {
     try {
@@ -348,24 +355,27 @@ app.get('/api/folder/:id', requireLogin, async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: '读取资料夹内容失败。' }); }
 });
 
+// --- *** 完整替换 *** ---
 app.post('/api/folder', requireLogin, async (req, res) => {
     const { name, parentId } = req.body;
     const userId = req.session.userId;
-    if (!name || !parentId) return res.status(400).json({ success: false, message: '缺少资料夹名称或父 ID。' });
+    if (!name || !parentId) {
+        return res.status(400).json({ success: false, message: '缺少资料夹名称或父 ID。' });
+    }
     
     try {
-        const existingFolder = await data.findFolderByName(name, parentId, userId);
-
-        if (existingFolder) {
-            res.json({ success: true, id: existingFolder.id, existed: true });
-        } else {
-            const result = await data.createFolder(name, parentId, userId);
-            res.json(result);
+        const conflict = await data.checkFullConflict(name, parentId, userId);
+        if (conflict) {
+            return res.status(409).json({ success: false, message: '同目录下已存在同名档案或资料夹。' });
         }
+
+        const result = await data.createFolder(name, parentId, userId);
+        res.json(result);
     } catch (error) {
          res.status(500).json({ success: false, message: error.message || '处理资料夹时发生错误。' });
     }
 });
+
 
 app.get('/api/folders', requireLogin, async (req, res) => {
     const folders = await data.getAllFolders(req.session.userId);
@@ -398,11 +408,11 @@ app.post('/api/folder/delete', requireLogin, async (req, res) => {
     const { folderId } = req.body;
     const userId = req.session.userId;
     const storage = storageManager.getStorage();
-    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夹 ID。' });
+    if (!folderId) return res.status(400).json({ success: false, message: '无效的资料夾 ID。' });
     
     const folderInfo = await data.getFolderPath(folderId, userId);
     if (!folderInfo || folderInfo.length === 0) {
-        return res.status(404).json({ success: false, message: '找不到指定的资料夹。' });
+        return res.status(404).json({ success: false, message: '找不到指定的资料夾。' });
     }
     if (folderInfo.length === 1 && folderInfo[0].id === folderId) {
         return res.status(400).json({ success: false, message: '无法删除根目录。' });
