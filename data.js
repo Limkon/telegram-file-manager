@@ -264,31 +264,34 @@ function moveItems(fileIds, folderIds, targetFolderId, userId) {
         db.serialize(() => {
             db.run("BEGIN TRANSACTION;");
 
+            const promises = [];
+
             if (fileIds && fileIds.length > 0) {
                 const filePlaceholders = fileIds.map(() => '?').join(',');
                 const moveFilesSql = `UPDATE files SET folder_id = ? WHERE message_id IN (${filePlaceholders}) AND user_id = ?`;
-                db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], function(err) {
-                    if (err) {
-                        db.run("ROLLBACK;");
-                        return reject(err);
-                    }
-                });
+                promises.push(new Promise((res, rej) => {
+                    db.run(moveFilesSql, [targetFolderId, ...fileIds, userId], (err) => err ? rej(err) : res());
+                }));
             }
+
             if (folderIds && folderIds.length > 0) {
                 const folderPlaceholders = folderIds.map(() => '?').join(',');
                 const moveFoldersSql = `UPDATE folders SET parent_id = ? WHERE id IN (${folderPlaceholders}) AND user_id = ?`;
-                db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId], function(err) {
-                    if (err) {
-                        db.run("ROLLBACK;");
-                        return reject(err);
-                    }
-                });
+                 promises.push(new Promise((res, rej) => {
+                    db.run(moveFoldersSql, [targetFolderId, ...folderIds, userId], (err) => err ? rej(err) : res());
+                }));
             }
-            
-            db.run("COMMIT;", (err) => {
-                if(err) return reject(err);
-                resolve({ success: true });
-            });
+
+            Promise.all(promises)
+                .then(() => {
+                    db.run("COMMIT;", (err) => {
+                        if (err) reject(err);
+                        else resolve({ success: true });
+                    });
+                })
+                .catch((err) => {
+                    db.run("ROLLBACK;", () => reject(err));
+                });
         });
     });
 }
@@ -506,6 +509,23 @@ function checkNameConflict(itemNames, targetFolderId, userId) {
     });
 }
 
+// --- *** 新增函式 *** ---
+function checkFullConflict(name, folderId, userId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT name FROM (
+                SELECT name FROM folders WHERE name = ? AND parent_id = ? AND user_id = ?
+                UNION ALL
+                SELECT fileName as name FROM files WHERE fileName = ? AND folder_id = ? AND user_id = ?
+            ) LIMIT 1
+        `;
+        db.get(sql, [name, folderId, userId, name, folderId, userId], (err, row) => {
+            if (err) return reject(err);
+            resolve(!!row);
+        });
+    });
+}
+
 function findFileInFolder(fileName, folderId, userId) {
     return new Promise((resolve, reject) => {
         const sql = `SELECT message_id FROM files WHERE fileName = ? AND folder_id = ? AND user_id = ?`;
@@ -564,5 +584,6 @@ module.exports = {
     deleteFilesByIds,
     findFileInFolder,
     checkNameConflict,
-    checkFolderConflict
+    checkFolderConflict,
+    checkFullConflict // <-- 新增
 };
